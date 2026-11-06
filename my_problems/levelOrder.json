@@ -1,0 +1,7 @@
+{
+  "key": "levelOrder",
+  "name": "levelOrder",
+  "savedAt": 1793761020235,
+  "inputs": ["new Solution().levelOrder(tree(3,9,20,null,null,15,7))"],
+  "code": "class Solution {\n    public List<List<Integer>> levelOrder(TreeNode root) {\n        List<List<Integer>> result = new ArrayList<>();\n        Queue<TreeNode> q = new LinkedList<>();\n        q.add(root);\n        if(root == null) return result;\n        while(!q.isEmpty()){\n            int size = q.size();\n            List<Integer> li = new ArrayList<>();\n            for(int i=0; i<size; i++){\n                TreeNode node = q.poll();\n                li.add(node.val);               \n                if(node.left != null){\n                    q.add(node.left);\n                }\n                if(node.right != null){\n                    q.add(node.right);\n                }\n            }\n            result. add(li);\n        }\n        return result;\n    }\n}"
+}

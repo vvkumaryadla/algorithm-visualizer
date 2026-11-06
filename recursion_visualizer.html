@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Algorithm Visualizer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#f6f6f3; --card:#fff; --ink:#1f2328; --mute:#6b7280; --line:#d5d9e0;
+    --active:#2563eb; --wait:#d97706; --done:#16a34a; --hit:#8b5cf6; --write:#0891b2; --hidden:#cbd1da; --err:#dc2626;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#14161a; --card:#1c1f25; --ink:#e6e8eb; --mute:#9aa3af; --line:#374151; --hidden:#3b4250; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.45 -apple-system,system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
+  header{padding:12px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;border-bottom:1px solid var(--line)}
+  h1{font-size:18px;margin:0 6px 0 0}
+  h2{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 8px}
+  .wrap{padding:14px 20px;display:grid;gap:14px}
+  .top{display:grid;grid-template-columns:minmax(300px,1fr) minmax(300px,1fr);gap:14px}
+  .viz{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+  .viz.nocalls{grid-template-columns:1fr}
+  .dbg{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:14px;align-items:start}
+  @media (max-width:900px){.dbg{grid-template-columns:1fr}}
+  #codeView{max-height:330px;overflow:auto;font:12.5px/1.55 ui-monospace,Menlo,Consolas,monospace;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:4px 0}
+  .cl{display:flex;white-space:pre;padding-right:10px;box-shadow:inset 3px 0 transparent}
+  .cl .ln{flex:none;width:38px;text-align:right;padding-right:10px;color:var(--mute);user-select:none}
+  .cl.inloop{background:color-mix(in srgb,var(--wait) 9%,transparent)}
+  .cl.now{background:color-mix(in srgb,var(--active) 22%,transparent);box-shadow:inset 3px 0 var(--active);font-weight:600}
+  .cl.did{background:color-mix(in srgb,var(--done) 20%,transparent);box-shadow:inset 3px 0 var(--done);font-weight:600}
+  .cl .arrow{flex:none;width:0;overflow:visible;color:var(--active)}
+  #varsView table{width:100%;border-collapse:collapse;font-size:13px}
+  #varsView td{padding:3px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+  #varsView td.t{color:var(--mute);font-size:11px;white-space:nowrap}
+  #varsView td.n{font-weight:600;font-family:ui-monospace,Menlo,monospace}
+  #varsView td.v{font-family:ui-monospace,Menlo,monospace;word-break:break-all}
+  #varsView tr.chg td.v{background:color-mix(in srgb,var(--write) 28%,transparent)}
+  #varsView tr.new td.v{background:color-mix(in srgb,var(--hit) 25%,transparent)}
+  #varsView small{color:var(--mute)}
+  .loopb{display:inline-block;font-size:12px;margin:0 6px 6px 0;padding:2px 9px;border-radius:99px;background:color-mix(in srgb,var(--wait) 22%,var(--card));border:1px solid var(--wait)}
+  .loopb code{font-size:11.5px}
+  @media (max-width:900px){.top,.viz{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+  textarea{width:100%;height:270px;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical;tab-size:2}
+  input[type=text],select{font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+  input[type=text]{font-family:ui-monospace,Menlo,monospace;font-size:13px;min-width:230px}
+  .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+  button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+  button:hover{border-color:var(--active)} button.primary{background:var(--active);border-color:var(--active);color:#fff}
+  button:disabled{opacity:.4;cursor:default}
+  label{font-size:13px;color:var(--mute);display:flex;align-items:center;gap:6px}
+  input[type=range]{accent-color:var(--active)}
+  #msg{margin-top:6px;font-size:13px;color:var(--err);white-space:pre-wrap}
+  #msg.info{color:var(--mute)}
+  #say{font-size:16px;min-height:4.6em;margin:0}
+  #say .tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;color:#fff;margin-right:8px;vertical-align:1px;letter-spacing:.03em}
+  .tag.push{background:var(--active)} .tag.pop{background:var(--done)} .tag.base{background:var(--wait)}
+  .tag.hit{background:var(--hit)} .tag.write{background:var(--write)} .tag.start{background:var(--mute)}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:.92em;background:color-mix(in srgb,var(--mute) 16%,transparent);padding:0 4px;border-radius:4px}
+  #bar{height:5px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden}
+  #bar div{height:100%;width:0;background:var(--active);transition:width .2s}
+  .legend{display:flex;gap:12px;font-size:12px;color:var(--mute);flex-wrap:wrap;margin-top:10px}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+  #out{font:12px ui-monospace,Menlo,monospace;color:var(--mute);margin-top:8px;white-space:pre-wrap}
+  #out b{color:var(--done)}
+  /* tree */
+  #treeBox{overflow:auto;max-height:560px}
+  #tree{display:block;margin:0 auto}
+  .edge{stroke:var(--hidden);stroke-width:2;fill:none;transition:stroke .2s}
+  .node rect{stroke-width:2.5;transition:stroke .25s,fill .25s}
+  .node text{text-anchor:middle;pointer-events:none}
+  .node .lbl{font-size:12px;font-weight:600;fill:var(--ink);font-family:ui-monospace,Menlo,monospace}
+  .node .val{font-size:13px;font-weight:700;fill:var(--done)}
+  .node.hitn .val{fill:var(--hit)}
+  .node{transition:opacity .3s}
+  .node.just rect{animation:pulse .6s ease-out}
+  @keyframes pulse{0%{stroke-width:7}100%{stroke-width:2.5}}
+  /* stack */
+  #stackWrap{min-height:200px;max-height:520px;overflow:auto;display:flex;flex-direction:column;justify-content:flex-end}
+  #stack{display:flex;flex-direction:column-reverse;gap:6px}
+  .frame{border:2px solid var(--wait);border-radius:8px;padding:5px 10px;background:color-mix(in srgb,var(--wait) 10%,var(--card))}
+  .frame.top{border-color:var(--active);background:color-mix(in srgb,var(--active) 12%,var(--card))}
+  .frame.new{animation:pushIn .35s ease-out}
+  .frame b{font:700 13px ui-monospace,Menlo,monospace}
+  .frame .tp{float:right;font-size:11px;color:var(--active);font-weight:700}
+  .frame .kid{font:12px ui-monospace,Menlo,monospace;color:var(--mute);padding-left:8px}
+  .frame .kid em{font-style:normal;color:var(--done);font-weight:700} .frame .kid u{text-decoration:none;color:var(--wait)}
+  .frame.ghost{border:2px dashed var(--done);background:color-mix(in srgb,var(--done) 10%,var(--card));animation:popOut .8s ease-in forwards}
+  .frame.ghost.hitg{border-color:var(--hit);background:color-mix(in srgb,var(--hit) 10%,var(--card))}
+  .frame.ghost em{font-style:normal;font-weight:700;color:var(--done);font-size:14px}
+  .ground{border-top:3px solid var(--ink);margin-top:6px;text-align:center;font-size:11px;color:var(--mute);padding-top:2px}
+  @keyframes pushIn{from{transform:translateY(-26px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes popOut{0%{transform:none;opacity:1}100%{transform:translateY(-6px);opacity:.6}}
+  .empty{color:var(--mute);text-align:center;padding:10px;font-size:13px}
+  /* data structures */
+  .struct{margin-bottom:14px}
+  .struct .nm{font:700 13px ui-monospace,Menlo,monospace;margin-bottom:4px}
+  .struct .nm span{font-weight:400;color:var(--mute)}
+  .arr{display:flex;flex-wrap:wrap;gap:3px}
+  .c{min-width:34px;text-align:center}
+  .c .v{border:1.5px solid var(--line);border-radius:6px;padding:2px 6px;font:13px ui-monospace,Menlo,monospace;background:var(--bg)}
+  .c .i{font-size:10px;color:var(--mute)}
+  .c.w .v{background:var(--write);border-color:var(--write);color:#fff;font-weight:700;animation:pop .5s ease-out}
+  .c.r .v{border-color:#eab308;box-shadow:0 0 0 2px #eab30866}
+  @keyframes pop{0%{transform:scale(1.35)}100%{transform:none}}
+  table.grid{border-collapse:separate;border-spacing:3px}
+  table.grid td,table.grid th{padding:0}
+  table.grid th{font:10px ui-monospace,Menlo,monospace;color:var(--mute);font-weight:400;padding:0 4px}
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{border:1.5px solid var(--line);border-radius:7px;padding:2px 8px;font:13px ui-monospace,Menlo,monospace;background:var(--bg)}
+  .chip b{color:var(--mute);font-weight:600}
+  .chip.w{background:var(--write);border-color:var(--write);color:#fff;animation:pop .5s ease-out} .chip.w b{color:#fff}
+  .chip.r{border-color:#eab308;box-shadow:0 0 0 2px #eab30866}
+  .hint{font-size:12px;color:var(--mute);margin-top:4px}
+  /* activity log */
+  #alog{max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:12px/1.4 ui-monospace,Menlo,monospace}
+  .lg{display:flex;gap:6px;align-items:baseline;padding:2px 8px;border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+  .lg.now{background:color-mix(in srgb,var(--active) 14%,var(--bg))}
+  .lg .n{color:var(--mute);min-width:26px;text-align:right}
+  .lg .k{font-size:10px;font-weight:700;color:#fff;border-radius:99px;padding:0 6px;min-width:52px;text-align:center}
+  .lg .t{word-break:break-word} .lg .t small{color:var(--mute);font-size:11px}
+  .lg .k.add{background:var(--done)} .lg .k.set{background:var(--write)} .lg .k.del{background:var(--err)} .lg .k.reset{background:var(--wait)}
+  .lg .k.call{background:var(--active)} .lg .k.ret{background:var(--mute)} .lg .k.hit{background:var(--hit)} .lg .k.link{background:var(--write)} .lg .k.ptr{background:var(--mute)}
+  /* linked structures (trees / lists) */
+  #graphs{overflow:auto;max-height:520px}
+  .gwrap{margin-bottom:10px} .gwrap .nm{font:700 13px ui-monospace,Menlo,monospace;margin-bottom:2px}
+  .gwrap .nm span{font-weight:400;color:var(--mute)}
+  .gwrap svg{display:block;color:var(--ink)}
+  .gwrap .gn circle{fill:var(--card);stroke:var(--ink);stroke-width:2;transition:fill .2s,stroke .2s}
+  .gwrap .gn.hl circle{fill:color-mix(in srgb,var(--write) 28%,var(--card));stroke:var(--write);stroke-width:3.5;animation:pop .5s ease-out;transform-box:fill-box;transform-origin:center}
+  .gwrap .gn text{font:600 12px ui-monospace,Menlo,monospace;fill:var(--ink);text-anchor:middle}
+  .gwrap .ge{stroke:var(--ink);stroke-width:1.8;fill:none;opacity:.75}
+  .gwrap .ge.nx{stroke-dasharray:4 3;opacity:.5}
+  .gwrap .gp{font:700 11px ui-monospace,Menlo,monospace;text-anchor:middle}
+  .gwrap .gv circle{fill:var(--card);stroke:var(--ink);stroke-width:2;transition:fill .2s,stroke .2s}
+  .gwrap .gv.vis circle{fill:color-mix(in srgb,var(--done) 30%,var(--card));stroke:var(--done)}
+  .gwrap .gv.qd circle{stroke:var(--wait);stroke-width:4}
+  .gwrap .gv.cu circle{fill:var(--active);stroke:var(--active)}
+  .gwrap .gv.hl circle{animation:pop .5s ease-out;transform-box:fill-box;transform-origin:center}
+  .gwrap .gv text{font:600 12px ui-monospace,Menlo,monospace;fill:var(--ink);text-anchor:middle}
+  .gwrap .gv.cu text{fill:#fff}
+  .gwrap .gv .gd{font-size:10px;font-weight:700;fill:var(--mute)}
+  .gwrap .gleg{font-size:12px;color:var(--mute);display:flex;gap:12px;flex-wrap:wrap;margin-top:2px}
+  .gwrap .gleg i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:4px;vertical-align:-1px;border:2.5px solid}
+  .gwrap .gnull{font:12px ui-monospace,Menlo,monospace;fill:var(--mute);text-anchor:middle}
+</style>
+</head>
+<body>
+<header>
+  <h1>Algorithm Visualizer</h1>
+  <label>Language
+    <select id="lang"><option value="js">JavaScript</option><option value="java">Java</option></select>
+  </label>
+  <label>Examples
+    <select id="preset"></select>
+  </label>
+  <select id="inputs" style="display:none" title="Earlier inputs saved for this problem"></select>
+  <button id="renameP" style="display:none" title="Rename this saved problem">Rename</button>
+  <button id="delP" style="display:none" title="Delete this saved problem">Delete</button>
+  <span style="font-size:13px;color:var(--mute)">Paste code, press <b>Animate</b>.</span>
+</header>
+
+<div class="wrap">
+  <section class="top">
+    <div class="card">
+      <h2>1 · Your code</h2>
+      <textarea id="code" spellcheck="false"></textarea>
+      <div class="row">
+        <label>Run <input type="text" id="entry" placeholder="e.g. fib(5)"></label>
+        <button id="animate" class="primary">Animate ▶</button>
+      </div>
+      <div id="msg"></div>
+    </div>
+    <div class="card">
+      <h2>2 · What's happening</h2>
+      <p id="say"></p>
+      <div id="bar"><div></div></div>
+      <div class="row">
+        <button id="reset">⏮</button>
+        <button id="prev">◀ Back</button>
+        <button id="play" class="primary">▶ Play</button>
+        <button id="next">Step ▶</button>
+        <label>speed <input id="speed" type="range" min="1" max="10" value="4"></label>
+        <label id="stepLinesLbl" style="display:none" title="Off = only the key steps (calls, returns, changes to data)"><input type="checkbox" id="stepLines" checked> step every line</label>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--active)"></i>running</span>
+        <span><i style="background:var(--wait)"></i>waiting on child</span>
+        <span><i style="background:var(--done)"></i>returned</span>
+        <span><i style="background:var(--hit)"></i>memo hit</span>
+        <span><i style="background:var(--write)"></i>cell written</span>
+        <span><i style="background:#eab308"></i>cell read</span>
+      </div>
+      <div id="out"></div>
+      <div class="hint">Keys: ← → step, space play/pause.</div>
+    </div>
+  </section>
+
+  <section class="card" id="dbgCard" style="display:none">
+    <h2>Debugger — current line, variables &amp; loop iterations</h2>
+    <div class="dbg">
+      <div id="codeView"></div>
+      <div id="varsView"></div>
+    </div>
+  </section>
+
+  <section class="card" id="graphCard" style="display:none">
+    <h2>Linked structures &amp; graphs — tree / linked list / graph</h2>
+    <div id="graphs"></div>
+  </section>
+
+  <section class="viz" id="viz">
+    <div class="card" id="treeCard">
+      <h2>Call tree — every circle is one call</h2>
+      <div id="treeBox"><svg id="tree"></svg></div>
+    </div>
+    <div>
+      <div class="card" id="stackCard" style="margin-bottom:14px">
+        <h2>Call stack</h2>
+        <div id="stackWrap">
+          <div id="stack"></div>
+          <div class="ground">bottom of stack</div>
+        </div>
+      </div>
+      <div class="card" id="structCard">
+        <h2>Data structures — memo, DP tables, arrays &amp; collections</h2>
+        <div id="structs"></div>
+        <h2 style="margin-top:14px">Activity log — every add / update / remove</h2>
+        <div id="alog"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* =====================================================================
+   1. SOURCE SCANNING (no parser: mask strings/comments, then match brackets)
+   ===================================================================== */
+function mask(src){
+  const out = src.split(''), n = src.length;
+  const blank = (a,b)=>{ for(let k=a;k<b&&k<n;k++) if(out[k] !== '\n') out[k] = ' '; };
+  let i = 0, prev = '';
+  while(i < n){
+    const c = src[i], d = src[i+1];
+    if(c==='/' && d==='/'){ let j = src.indexOf('\n',i); if(j<0) j=n; blank(i,j); i=j; continue; }
+    if(c==='/' && d==='*'){ let j = src.indexOf('*/',i+2); j = j<0 ? n : j+2; blank(i,j); i=j; continue; }
+    if(c==='"' || c==="'"){
+      let j=i+1; while(j<n && src[j]!==c){ if(src[j]==='\\') j++; if(src[j]==='\n') break; j++; }
+      blank(i,j+1); i=j+1; prev='"'; continue;
+    }
+    if(c==='`'){
+      let j=i+1, depth=0;
+      while(j<n){
+        if(src[j]==='\\'){ j+=2; continue; }
+        if(depth===0 && src[j]==='`') break;
+        if(src[j]==='$' && src[j+1]==='{'){ depth++; j+=2; continue; }
+        if(depth>0 && src[j]==='}'){ depth--; j++; continue; }
+        if(depth>0 && src[j]==='`'){ j++; while(j<n && src[j]!=='`'){ if(src[j]==='\\') j++; j++; } }
+        j++;
+      }
+      blank(i,j+1); i=j+1; prev='"'; continue;
+    }
+    if(c==='/' && (prev==='' || '(,=:[!&|?{};+-*%<>~^'.includes(prev))){
+      let j=i+1, cls=false;
+      while(j<n && src[j]!=='\n'){
+        if(src[j]==='\\'){ j+=2; continue; }
+        if(src[j]==='[') cls=true; else if(src[j]===']') cls=false; else if(src[j]==='/' && !cls) break;
+        j++;
+      }
+      if(src[j]==='/'){ j++; while(/[a-z]/i.test(src[j]||'')) j++; blank(i,j); i=j; prev='"'; continue; }
+    }
+    if(!/\s/.test(c)) prev = c;
+    i++;
+  }
+  return out.join('');
+}
+function matchClose(m,i){
+  let d=0;
+  for(let k=i;k<m.length;k++){
+    const c=m[k];
+    if(c==='('||c==='['||c==='{') d++;
+    else if(c===')'||c===']'||c==='}'){ d--; if(d===0) return k; }
+  }
+  return -1;
+}
+/* where does the expression starting at `start` end? */
+function exprEnd(m,start){
+  let d=0, k=start;
+  for(; k<m.length; k++){
+    const c=m[k];
+    if(c==='('||c==='['||c==='{') d++;
+    else if(c===')'||c===']'||c==='}'){ if(d===0) break; d--; }
+    else if(d===0){
+      if(c===';'||c===',') break;
+      if(c==='\n'){
+        let p=k-1; while(p>=start && /\s/.test(m[p])) p--;
+        let q=k+1; while(q<m.length && /\s/.test(m[q])) q++;
+        if(!/[?:+\-*\/%&|,=<>(\[{.!^~]/.test(m[p]||'') && !/[?:+\-*\/%&|.,=<>^]/.test(m[q]||'')) break;
+      }
+    }
+  }
+  let e=k; while(e>start && /\s/.test(m[e-1])) e--;
+  return {end:e, stop:k};
+}
+function splitParams(text){
+  const m = mask(text), parts=[]; let d=0, last=0;
+  for(let i=0;i<=m.length;i++){
+    const c=m[i];
+    if(i===m.length || (c===',' && d===0)){ parts.push({raw:text.slice(last,i), mk:m.slice(last,i)}); last=i+1; }
+    else if('([{'.includes(c)) d++; else if(')]}'.includes(c)) d--;
+  }
+  return parts.filter(p=>p.mk.trim()).map(p=>{
+    const mt = /^\s*([A-Za-z_$][\w$]*)\s*(=|$)/.exec(p.mk);
+    return mt ? mt[1] : null;      // null = destructured / rest param
+  });
+}
+
+/* Find functions, decide which are recursive, insert tracing hooks. */
+function transform(code){
+  const m = mask(code), ID='[A-Za-z_$][\\w$]*';
+  const fns=[], seenBs=new Set();
+  const push = f => { if(seenBs.has(f.bs)) return; seenBs.add(f.bs); f.body=m.slice(f.bs,f.be); fns.push(f); };
+  const addBlock = (name,open)=>{
+    const cp = matchClose(m,open); if(cp<0) return;
+    let k=cp+1; while(/\s/.test(m[k]||'')) k++;
+    if(m[k] !== '{') return;
+    const be = matchClose(m,k); if(be<0) return;
+    push({name, params:code.slice(open+1,cp), kind:'block', bs:k+1, be});
+  };
+  let re, mt;
+  re = new RegExp('(?<![\\w$.])function\\s+('+ID+')\\s*\\(','g');
+  while((mt=re.exec(m))) addBlock(mt[1], mt.index+mt[0].length-1);
+  re = new RegExp('(?<![\\w$.])('+ID+')\\s*=\\s*function\\s*\\(','g');
+  while((mt=re.exec(m))) addBlock(mt[1], mt.index+mt[0].length-1);
+  re = new RegExp('(?<![\\w$.])('+ID+')\\s*=(?![=>])\\s*','g');
+  while((mt=re.exec(m))){
+    let k = mt.index+mt[0].length, params, after;
+    if(m[k]==='('){ const cp=matchClose(m,k); if(cp<0) continue; params=code.slice(k+1,cp); after=cp+1; }
+    else { const im = new RegExp('^'+ID).exec(m.slice(k)); if(!im) continue; params=im[0]; after=k+im[0].length; }
+    const am = /^\s*=>\s*/.exec(m.slice(after)); if(!am) continue;
+    const b = after+am[0].length;
+    if(m[b]==='{'){ const be=matchClose(m,b); if(be<0) continue; push({name:mt[1], params, kind:'block', bs:b+1, be}); }
+    else push({name:mt[1], params, kind:'expr', bs:b, be:exprEnd(m,b).end});
+  }
+
+  // which functions are (mutually) recursive?  build a reference graph, look for cycles
+  const names=[...new Set(fns.map(f=>f.name))], refs={};
+  names.forEach(n=>refs[n]=new Set());
+  fns.forEach(f=>names.forEach(g=>{
+    if(new RegExp('(?<![\\w$.])'+g.replace(/\$/g,'\\$')+'(?![\\w$])').test(f.body)) refs[f.name].add(g);
+  }));
+  const reaches = (from,target)=>{
+    const seen=new Set(), st=[...refs[from]];
+    while(st.length){ const x=st.pop(); if(x===target) return true; if(seen.has(x)) continue; seen.add(x); refs[x] && st.push(...refs[x]); }
+    return false;
+  };
+  const inst = fns.filter(f=>reaches(f.name,f.name));
+
+  const ins=[]; let seq=0; const add=(pos,text)=>ins.push({pos,text,seq:seq++});
+  inst.forEach(f=>{
+    const pn = splitParams(f.params);
+    const head = 'const __f=__T.enter('+JSON.stringify(f.name)+','+JSON.stringify(pn)+',['+pn.map(x=>x||'void 0').join(',')+']);'
+               + pn.map((x,i)=>x ? x+'=__f.a['+i+'];' : '').join('');
+    if(f.kind==='block'){ add(f.bs, head+'return __T.run(__f,()=>{'); add(f.be, '\n});'); }
+    else { add(f.bs, '{'+head+'return __T.run(__f,()=>('); add(f.be, '));}'); }
+  });
+
+  // wrap arrays / objects / Maps / Sets at the point they are created so reads & writes can be seen
+  const vre = new RegExp('(?<![\\w$.])(?:const|let|var)\\s+('+ID+')\\s*=(?![=>])\\s*','g');
+  while((mt=vre.exec(m))){
+    const s = mt.index+mt[0].length, {end,stop} = exprEnd(m,s);
+    if(m[stop]===',') continue;
+    if(!/^(\[|\{|new\s+(Array|Map|Set|Object)\b|Array\b|Object\b|Map\b|Set\b)/.test(m.slice(s,end))) continue;
+    add(s,'__T.w('); add(end, ','+JSON.stringify(mt[1])+')');
+  }
+
+  ins.sort((a,b)=>a.pos-b.pos || a.seq-b.seq);
+  let out='', last=0;
+  for(const x of ins){ out += code.slice(last,x.pos)+x.text; last=x.pos; }
+  out += code.slice(last);
+  return {code:out, traced:inst.map(f=>f.name), found:names};
+}
+
+/* =====================================================================
+   2. RUNTIME: execute the code, record a timeline of events
+   ===================================================================== */
+const MAXE = 6000, MAXN = 700, MAXS = 60;
+function execute(userCode, entry){
+  const tf = transform(userCode);
+  const events=[], nodes=[], structs=[], logs=[], stack=[];
+  const rawOf=new WeakMap(), proxyOf=new WeakMap();
+  let reads=new Map();
+  const DEL = {del:true};
+
+  const watchable = v => {
+    if(v===null || typeof v!=='object') return false;
+    if(Array.isArray(v) || v instanceof Map || v instanceof Set) return true;
+    const p=Object.getPrototypeOf(v); return p===Object.prototype || p===null;
+  };
+  function snap(v,depth=0){
+    if(typeof v==='function') return 'ƒ';
+    if(typeof v==='symbol') return String(v);
+    if(v===null || typeof v!=='object') return v;
+    v = rawOf.get(v) || v;
+    if(depth>5) return '…';
+    if(Array.isArray(v)){ const a=[]; for(let i=0;i<v.length;i++) a.push(snap(v[i],depth+1)); return {t:'a',v:a}; }
+    if(v instanceof Map){ const mp=new Map(); v.forEach((x,k)=>mp.set(k,snap(x,depth+1))); return {t:'m',v:mp}; }
+    if(v instanceof Set){ const s=new Set(); v.forEach(x=>s.add(typeof x==='object'?String(x):x)); return {t:'s',v:s}; }
+    if(watchable(v)){ const o={}; for(const k of Object.keys(v)) o[k]=snap(v[k],depth+1); return {t:'o',v:o}; }
+    return String(v);
+  }
+  function fmt(v,max=14){
+    let s;
+    if(v===undefined) s='undefined';
+    else if(typeof v==='number') s = v===Infinity?'∞' : v===-Infinity?'-∞' : String(v);
+    else if(typeof v==='string') s = JSON.stringify(v);
+    else if(typeof v==='function') s='ƒ';
+    else if(v!==null && typeof v==='object'){
+      const r = rawOf.get(v) || v;
+      try{ s = r instanceof Map ? 'Map('+r.size+')' : r instanceof Set ? 'Set('+r.size+')' : JSON.stringify(r,(k,x)=>x===Infinity?'∞':x); }catch(e){ s='{…}'; }
+    } else s = String(v);
+    s = String(s);
+    return s.length>max ? s.slice(0,max-1)+'…' : s;
+  }
+  const flush = ()=>{ const r=[...reads.values()]; reads=new Map(); return r; };
+  function noteRead(sid,path,val,found){
+    if(val!==null && typeof val==='object') return;                 // rows of a 2-D table aren't "reads"
+    if(found===undefined) found = val!==undefined && val!==null && val!==-1;
+    const key=sid+JSON.stringify(path);
+    if(!reads.has(key) && reads.size<12) reads.set(key,{sid,path,val:snap(val),found});
+    if(found && stack.length) stack[stack.length-1].foundVals.push(val);
+  }
+  function logWrite(sid,path,val,extra){
+    if(events.length>=MAXE) throw new Error('__LIMIT__');
+    events.push(Object.assign({type:'write',sid,path,val,reads:flush()},extra||{}));
+  }
+  const uniq = name => { let c=structs.filter(s=>s.base===name).length; return c? name+'#'+(c+1) : name; };
+
+  function child(v,sid,path){
+    if(proxyOf.has(v)) return proxyOf.get(v);
+    const p = mk(v,sid,path); proxyOf.set(v,p); rawOf.set(p,v); return p;
+  }
+  function mk(t,sid,path){
+    if(t instanceof Map){
+      const self = new Proxy(t,{ get(_,p){
+        if(p==='set') return (k,v)=>{ const raw=rawOf.get(v)||v; t.set(k,raw); logWrite(sid,path.concat([k]),snap(raw)); return self; };
+        if(p==='get') return k=>{ const v=t.get(k); noteRead(sid,path.concat([k]),v,t.has(k)); return watchable(v)?child(v,sid,path.concat([k])):v; };
+        if(p==='has') return k=>{ const r=t.has(k); noteRead(sid,path.concat([k]),r?t.get(k):undefined,r); return r; };
+        if(p==='delete') return k=>{ const r=t.delete(k); logWrite(sid,path.concat([k]),undefined,{del:true}); return r; };
+        const v=Reflect.get(t,p,t); return typeof v==='function' ? v.bind(t) : v;
+      }});
+      return self;
+    }
+    if(t instanceof Set){
+      return new Proxy(t,{ get(_,p){
+        if(p==='add') return v=>{ t.add(v); logWrite(sid,path.concat([v]),true); return t; };
+        if(p==='has') return v=>{ const r=t.has(v); noteRead(sid,path.concat([v]),r?true:undefined,r); return r; };
+        if(p==='delete') return v=>{ const r=t.delete(v); logWrite(sid,path.concat([v]),undefined,{del:true}); return r; };
+        const v=Reflect.get(t,p,t); return typeof v==='function' ? v.bind(t) : v;
+      }});
+    }
+    const isArr = Array.isArray(t);
+    const kk = p => isArr && /^\d+$/.test(p) ? +p : p;
+    return new Proxy(t,{
+      get(_,p,r){
+        const v=Reflect.get(t,p,r);
+        if(typeof p==='symbol' || typeof v==='function' || (isArr && p==='length')) return v;
+        if(isArr ? /^\d+$/.test(p) : Object.prototype.hasOwnProperty.call(t,p)) noteRead(sid,path.concat([kk(p)]),v);
+        return watchable(v) ? child(v,sid,path.concat([kk(p)])) : v;
+      },
+      has(_,p){
+        const r=Reflect.has(t,p);
+        if(typeof p==='string' && !isArr) noteRead(sid,path.concat([p]),r?t[p]:undefined,r);
+        return r;
+      },
+      set(_,p,v){
+        const raw = rawOf.get(v)||v;
+        if(typeof p==='symbol') return Reflect.set(t,p,raw);
+        if(isArr && p==='length'){
+          if(raw < t.length) logWrite(sid,path,undefined,{len:raw,silent:true});
+          return Reflect.set(t,p,raw);
+        }
+        const ok = Reflect.set(t,p,raw);
+        logWrite(sid,path.concat([kk(p)]),snap(raw));
+        return ok;
+      },
+      deleteProperty(_,p){
+        const ok=Reflect.deleteProperty(t,p);
+        if(typeof p==='string') logWrite(sid,path.concat([kk(p)]),undefined,{del:true});
+        return ok;
+      }
+    });
+  }
+  function wrapStruct(t,name){
+    if(rawOf.has(t)) return t;                       // already a proxy
+    if(proxyOf.has(t)) return proxyOf.get(t);
+    if(structs.length>=MAXS) return t;
+    const sid=structs.length;
+    structs.push({sid, base:name, name:uniq(name), kind: t instanceof Map?'Map':t instanceof Set?'Set':Array.isArray(t)?'array':'object'});
+    events.push({type:'init',sid,snap:snap(t),silent:true});
+    const p=mk(t,sid,[]); proxyOf.set(t,p); rawOf.set(p,t); return p;
+  }
+  function label(name,names,vals){
+    const parts=[];
+    vals.forEach((v,i)=>{
+      const pn=names[i]||'';
+      if(typeof v==='function') return;
+      if(v!==null && typeof v==='object'){
+        const r=rawOf.get(v)||v;
+        if(!Array.isArray(r) || /^(memo|cache|dp|table|mem|visited|seen|res|result|ans|out|used)$/i.test(pn) || r.length>6 || r.some(x=>x&&typeof x==='object')) return;
+      }
+      parts.push(fmt(v,10));
+    });
+    return name+'('+parts.join(',')+')';
+  }
+
+  const T = {
+    w(v,name){ return watchable(v) ? wrapStruct(v,name) : v; },
+    enter(name,names,vals){
+      if(nodes.length>=MAXN || events.length>=MAXE) throw new Error('__LIMIT__');
+      const lbl = label(name,names,vals);
+      const wrapped = vals.map((v,i)=> watchable(v) ? wrapStruct(v,names[i]||('arg'+i)) : v);
+      const parent = stack.length ? stack[stack.length-1] : null;
+      const node = {id:nodes.length, name, label:lbl, parent:parent?parent.id:null, kids:[], valStr:'', kind:'normal', foundVals:[]};
+      nodes.push(node); if(parent) parent.kids.push(node.id); stack.push(node);
+      events.push({type:'call',id:node.id,reads:flush()});
+      return {a:wrapped,node};
+    },
+    run(f,fn){
+      let val;
+      try{ val=fn(); } finally { stack.pop(); }
+      const node=f.node;
+      node.valStr = fmt(val,16);
+      node.kind = node.kids.length===0 ? (node.foundVals.some(x=>Object.is(x,val))?'hit':'base') : 'normal';
+      events.push({type:'ret',id:node.id,val:node.valStr,kind:node.kind,reads:flush()});
+      return val;
+    }
+  };
+  const con = {};
+  ['log','info','warn','error'].forEach(k=>con[k]=(...a)=>logs.push(a.map(x=>typeof x==='string'?x:fmt(x,80)).join(' ')));
+
+  let result, err=null;
+  try{
+    const fn = new Function('__T','console', tf.code + '\n' + (entry.trim() ? 'return ('+entry+');' : ''));
+    result = fn(T,con);
+  }catch(e){ err=e; }
+  return {events,nodes,structs,logs,traced:tf.traced,err,result:err?undefined:fmt(result,60), hasResult: !!entry.trim()};
+}
+
+/* =====================================================================
+   3. REPLAY / RENDER
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let R=null, vis=[], p=0, timer=null;
+
+function cloneSnap(v){
+  if(v===null||typeof v!=='object') return v;
+  switch(v.t){
+    case 'a': return {t:'a',v:v.v.map(cloneSnap)};
+    case 'o': { const o={}; for(const k in v.v) o[k]=cloneSnap(v.v[k]); return {t:'o',v:o}; }
+    case 'm': { const m=new Map(); v.v.forEach((x,k)=>m.set(k,cloneSnap(x))); return {t:'m',v:m}; }
+    case 's': return {t:'s',v:new Set(v.v)};
+  }
+  return v;
+}
+const getChild = (c,k)=> c.t==='m' ? c.v.get(k) : c.v[k];
+function applyWrite(root,e){
+  if(e.shift!==undefined){ let c=root; for(const k of e.path){ c=getChild(c,k); if(!c) return; } if(c.t==='a') c.v.splice(0,e.shift); return; }
+  if(e.len!==undefined){ let c=root; for(const k of e.path){ c=getChild(c,k); if(!c) return; } if(c.t==='a') c.v.length=e.len; return; }
+  let c=root;
+  for(let i=0;i<e.path.length-1;i++){ c=getChild(c,e.path[i]); if(!c||typeof c!=='object') return; }
+  const k=e.path[e.path.length-1];
+  if(e.del){
+    if(c.t==='a'){ if(k===c.v.length-1) c.v.pop(); else c.v[k]=undefined; }
+    else if(c.t==='o') delete c.v[k]; else c.v.delete(k);
+  } else if(c.t==='m') c.v.set(k,e.val);
+  else if(c.t==='s') c.v.add(k);
+  else c.v[k]=e.val;
+}
+function stateAt(upto){
+  const st=R.nodes.map(()=>({s:'hidden'})), stack=[], S=R.structs.map(()=>null);
+  for(let i=0;i<=upto;i++){
+    const e=R.events[i];
+    if(e.type==='call'){ if(stack.length) st[stack[stack.length-1]].s='wait'; stack.push(e.id); st[e.id].s='active'; }
+    else if(e.type==='ret'){ stack.pop(); st[e.id].s = e.kind==='hit'?'hit':'done'; if(stack.length) st[stack[stack.length-1]].s='active'; }
+    else if(e.type==='init') S[e.sid]=cloneSnap(e.snap);
+    else if(e.type==='graph') S[e.sid]=e.snap;
+    else if(e.type==='write' && S[e.sid]) applyWrite(S[e.sid],e);
+  }
+  return {st,stack,S};
+}
+
+/* ---- tree layout (all nodes placed up-front, revealed as they are called) ---- */
+const GY=74;
+function layoutTree(){
+  let lastRight=-2;
+  const wOf = n => Math.max(46, n.label.length*7.3+18);
+  R.nodes.filter(n=>n.parent===null).forEach(r=>{
+    (function pos(id,d){
+      const n=R.nodes[id]; n.w=wOf(n); n.y=24+d*GY;
+      if(!n.kids.length){ n.x=lastRight+14+n.w/2; lastRight=n.x+n.w/2; }
+      else { n.kids.forEach(k=>pos(k,d+1)); n.x=(R.nodes[n.kids[0]].x+R.nodes[n.kids[n.kids.length-1]].x)/2; }
+    })(r.id,0);
+  });
+  const minL=Math.min(...R.nodes.map(n=>n.x-n.w/2));
+  if(minL<10) R.nodes.forEach(n=>n.x+=10-minL);
+}
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); parent&&parent.appendChild(e); return e; }
+function drawTree(){
+  const svg=$('tree'); svg.innerHTML='';
+  if(!R.nodes.length) return;
+  layoutTree();
+  const W=Math.max(...R.nodes.map(n=>n.x+n.w/2))+12, H=Math.max(...R.nodes.map(n=>n.y))+54;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('width',W); svg.setAttribute('height',H);
+  R.nodes.forEach(n=>{ if(n.parent!==null){ const q=R.nodes[n.parent];
+    n.edge=el('path',{class:'edge',d:`M${q.x},${q.y+14} C${q.x},${q.y+40} ${n.x},${n.y-40} ${n.x},${n.y-14}`},svg); }});
+  R.nodes.forEach(n=>{
+    n.g=el('g',{class:'node',transform:`translate(${n.x},${n.y})`},svg);
+    n.rect=el('rect',{x:-n.w/2,y:-14,width:n.w,height:28,rx:14},n.g);
+    n.lb=el('text',{class:'lbl',y:4},n.g); n.lb.textContent=n.label;
+    n.vt=el('text',{class:'val',y:30},n.g);
+  });
+}
+
+/* ---- data-structure panel ---- */
+const pk = path => JSON.stringify(path);
+const isPrim = v => v===null || typeof v!=='object';
+function prim(v){ if(v===undefined) return '·'; if(v===Infinity) return '∞'; if(v===-Infinity) return '-∞'; if(v===null) return 'null'; return String(v); }
+function compact(v){
+  if(isPrim(v)) return prim(v);
+  if(v.t==='a') return '['+v.v.map(compact).join(',')+']';
+  if(v.t==='s') return '{'+[...v.v].map(prim).join(',')+'}';
+  if(v.t==='m') return 'Map('+v.v.size+')';
+  return '{…}';
+}
+function cellHtml(v,path,H){
+  const k=pk(path), cls=(H.w.has(k)?' w':'')+(H.r.has(k)?' r':'');
+  const idx = path[path.length-1];
+  return `<div class="c${cls}"><div class="v">${esc(compact(v))}</div><div class="i">${typeof idx==='number'?idx:esc(idx)}</div></div>`;
+}
+function renderStruct(info,s,H){
+  let body;
+  if(s.t==='a'){
+    if(s.v.every(isPrim)) body='<div class="arr">'+s.v.map((x,i)=>cellHtml(x,[i],H)).join('')+'</div>';
+    else if(s.v.every(r=>r&&r.t==='a'&&r.v.every(isPrim))){
+      const cols=Math.max(...s.v.map(r=>r.v.length));
+      // boolean / character grids (islands, mazes, visited...) get one colour per distinct value
+      const dv=[...new Set(s.v.flatMap(r=>r.v).map(prim))];
+      const tint = dv.length>=2 && dv.length<=6 && dv.some(x=>x==='true'||x==='false'||(typeof x==='string'&&x.length===1&&!/\d/.test(x))) ? dv.slice().sort() : null;
+      const TC=['#94a3b8','#22c55e','#f59e0b','#8b5cf6','#ef4444','#0891b2'];
+      let h='<table class="grid"><tr><th></th>'+Array.from({length:cols},(_,j)=>`<th>${j}</th>`).join('')+'</tr>';
+      s.v.forEach((r,i)=>{ h+=`<tr><th>${i}</th>`+r.v.map((x,j)=>{
+        let c=cellHtml(x,[i,j],H).replace('<div class="i">'+j+'</div>','');
+        if(tint && !H.w.has(pk([i,j])) && !H.w.has(pk([i]))) c=c.replace('<div class="v">','<div class="v" style="background:color-mix(in srgb,'+TC[tint.indexOf(prim(x))%6]+' 38%,var(--bg))">');
+        if(H.w.has(pk([i])) && !H.w.has(pk([i,j]))) c=c.replace('class="c','class="c w');   // whole row written
+        return '<td>'+c+'</td>'; }).join('')+'</tr>'; });
+      body=h+'</table>';
+    } else body='<div class="chips">'+s.v.map((x,i)=>`<span class="chip${H.w.has(pk([i]))?' w':''}"><b>${i}:</b> ${esc(compact(x))}</span>`).join('')+'</div>';
+    if(!s.v.length) body='<div class="hint">(empty)</div>';
+  } else {
+    const ents = s.t==='o' ? Object.entries(s.v) : s.t==='m' ? [...s.v.entries()] : [...s.v].map(x=>[x,null]);
+    if(!ents.length) body='<div class="hint">(empty)</div>';
+    else body='<div class="chips">'+ents.map(([k,x])=>{
+      const key=pk([s.t==='o'&&/^\d+$/.test(k)?k:k]);
+      const cls=(H.w.has(key)?' w':'')+(H.r.has(key)?' r':'');
+      return `<span class="chip${cls}"><b>${esc(prim(k))}${s.t==='s'?'':':'}</b>${s.t==='s'?'':' '+esc(compact(x))}</span>`;
+    }).join('')+'</div>';
+  }
+  return `<div class="struct"><div class="nm">${esc(info.name)} <span>(${info.kind})</span></div>${body}</div>`;
+}
+function nameOf(sid,path){
+  return R.structs[sid].name + path.map(k=> typeof k==='number'||/^\d+$/.test(k) ? `[${k}]` : `[${JSON.stringify(k)}]`).join('');
+}
+
+
+/* ---- linked structures: binary trees and linked lists ---- */
+const PCOL=['#2563eb','#d97706','#8b5cf6','#dc2626','#0891b2','#16a34a'];
+const pcol = name => PCOL[[...name].reduce((a,c)=>a+c.charCodeAt(0),0)%PCOL.length];
+function layoutG(g){
+  const by=new Map(g.rows.map(r=>[r[0],r])), hasIn=new Set(), pos=new Map();
+  g.rows.forEach(r=>{ const kids = g.kind==='tree' ? [r[2],r[3]] : [r[4]]; kids.forEach(c=>{ if(c!=null && by.has(c)) hasIn.add(c); }); });
+  if(g.kind==='tree'){
+    let slot=0, maxD=0; const seen=new Set();
+    const place=(id,d)=>{ if(id==null||!by.has(id)||seen.has(id)) return; seen.add(id); const r=by.get(id);
+      place(r[2],d+1); pos.set(id,{x:slot++,y:d}); maxD=Math.max(maxD,d); place(r[3],d+1); };
+    g.rows.filter(r=>!hasIn.has(r[0])).forEach(r=>place(r[0],0));
+    g.rows.forEach(r=>place(r[0],0));
+    return {by,pos,w:slot,h:maxD+1};
+  }
+  let row=0, w=0; const seen=new Set();
+  const chain=id=>{ let x=0; while(id!=null && by.has(id) && !seen.has(id)){ seen.add(id); pos.set(id,{x:x++,y:row}); id=by.get(id)[4]; } w=Math.max(w,x); row++; };
+  g.rows.filter(r=>!hasIn.has(r[0])).forEach(r=>chain(r[0]));
+  g.rows.forEach(r=>{ if(!seen.has(r[0])) chain(r[0]); });
+  return {by,pos,w:w+1,h:row};
+}
+function renderGraph(info,g,hl){
+  const L=layoutG(g), tree=g.kind==='tree';
+  const DX=tree?44:66, DY=tree?68:84, R0=16, OX=26, OY=24;
+  const X=id=>OX+L.pos.get(id).x*DX, Y=id=>OY+L.pos.get(id).y*DY;
+  const W=OX*2+Math.max(1,L.w-1)*DX+(tree?0:30), H=OY*2+Math.max(1,L.h-1)*DY+16;
+  const mid='ar'+info.sid;
+  let svg=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}"><defs><marker id="${mid}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="currentColor"/></marker></defs>`;
+  const ptrAt=new Map(); Object.entries(g.ptrs).forEach(([k,v])=>{ if(v!=null) (ptrAt.get(v)||ptrAt.set(v,[]).get(v)).push(k); });
+  g.rows.forEach(r=>{
+    const id=r[0]; if(!L.pos.has(id)) return;
+    const x1=X(id), y1=Y(id);
+    if(tree){
+      [r[2],r[3]].forEach(c=>{ if(c!=null && L.pos.has(c)) svg+=`<line class="ge" x1="${x1}" y1="${y1}" x2="${X(c)}" y2="${Y(c)}"/>`; });
+      if(r[4]!=null && L.pos.has(r[4])) svg+=`<path class="ge nx" marker-end="url(#${mid})" d="M${x1+R0},${y1} Q${(x1+X(r[4]))/2},${y1-26} ${X(r[4])-R0},${Y(r[4])}"/>`;
+    } else if(r[4]!=null && L.pos.has(r[4])){
+      const x2=X(r[4]), y2=Y(r[4]);
+      if(y2===y1 && x2===x1+DX) svg+=`<line class="ge" marker-end="url(#${mid})" x1="${x1+R0}" y1="${y1}" x2="${x2-R0-2}" y2="${y2}"/>`;
+      else svg+=`<path class="ge" marker-end="url(#${mid})" d="M${x1},${y1-R0} Q${(x1+x2)/2},${Math.min(y1,y2)-R0-34} ${x2},${y2-R0-2}"/>`;
+    } else if(r[4]==null){
+      svg+=`<line class="ge" x1="${x1+R0}" y1="${y1}" x2="${x1+R0+12}" y2="${y1}"/><text class="gnull" x="${x1+R0+22}" y="${y1+4}">∅</text>`;
+    }
+  });
+  g.rows.forEach(r=>{
+    const id=r[0]; if(!L.pos.has(id)) return;
+    const x=X(id), y=Y(id), names=ptrAt.get(id)||[];
+    svg+=`<g class="gn${hl.has(id)?' hl':''}"><circle cx="${x}" cy="${y}" r="${R0}"${names.length?` style="stroke:${pcol(names[0])}"`:''}/><text x="${x}" y="${y+4}">${esc(shorten4(prim(r[1])))}</text>`;
+    names.forEach((nm,k)=>{ svg+=`<text class="gp" x="${x}" y="${y+R0+13+k*12}" style="fill:${pcol(nm)}">${tree?'':'↑ '}${esc(nm)}</text>`; });
+    svg+='</g>';
+  });
+  svg+='</svg>';
+  const nulls=Object.entries(g.ptrs).filter(([k,v])=>v==null).map(([k])=>`<code style="color:${pcol(k)}">${esc(k)}</code> = null`);
+  return `<div class="gwrap"><div class="nm">${esc(info.name)} <span>(${info.kind==='tree'?'binary tree':'linked list'})</span></div>${svg}${nulls.length?`<div class="hint">${nulls.join(' · ')}</div>`:''}</div>`;
+}
+const shorten4 = t => t.length>4 ? t.slice(0,3)+'…' : t;
+const shorten = (t,n) => { t=String(t); return t.length>n ? t.slice(0,n-1)+'…' : t; };
+
+/* ---- graphs (adjacency list / edge list) drawn as circles and lines ---- */
+const ADJ_NAME=/adj|graph|neighbo|rooms/i, EDGE_NAME=/^(edges|connections|prerequisites|roads|flights|times|pairs|relations)$/i, EDGE_DIRECTED=/^(prerequisites|flights|times)$/i;
+const VISITED_NAME=/^(seen|visited|vis|visit|marked|used|discovered)$/i, DIST_NAME=/^(dist|distance|dists|depth|steps|level|levels)$/i, QUEUE_NAME=/^(q|queue|que|dq|deque|stack|st|frontier|bfs|pq)$/i;
+const baseName = nm => nm.split('#')[0];
+const ints = row => row && row.t==='a' && row.v.every(x=>Number.isInteger(x)&&x>=0) ? row.v : null;
+function asGraph(name,s){
+  if(!s) return null;
+  const nm=baseName(name); let edges=[], directed=null, kind=null, n=0;
+  if(ADJ_NAME.test(nm)){
+    if(s.t==='a' && s.v.length && s.v.every(r=>ints(r))){ s.v.forEach((r,u)=>r.v.forEach(v=>edges.push([u,v]))); n=s.v.length; kind='adj'; }
+    else if((s.t==='m'||s.t==='o') && (s.t==='m'?s.v.size:Object.keys(s.v).length)){
+      const ents = s.t==='m' ? [...s.v.entries()] : Object.entries(s.v).map(([k,v])=>[Number(k),v]);
+      if(ents.every(([k,v])=>Number.isInteger(k)&&k>=0&&ints(v))){ ents.forEach(([k,v])=>v.v.forEach(x=>edges.push([k,x]))); n=0; kind='adj'; }
+    }
+  }
+  if(!kind && EDGE_NAME.test(nm) && s.t==='a' && s.v.length && s.v.every(r=>{ const a=ints(r); return a && a.length>=2 && a.length<=3; })){
+    s.v.forEach(r=>edges.push([r.v[0],r.v[1]])); directed=EDGE_DIRECTED.test(nm); kind='edges';
+  }
+  if(!kind) return null;
+  edges.forEach(([u,v])=>{ n=Math.max(n,u+1,v+1); });
+  if(n<2 || n>40) return null;
+  if(directed===null){ const set=new Set(edges.map(e=>e[0]+','+e[1])); directed=!edges.every(([u,v])=>set.has(v+','+u)); }
+  return {n,edges,directed,kind};
+}
+function computeCur(){      // node most recently taken out of a queue / stack, per event (sticky)
+  const S=R.structs.map(()=>null), cur=new Array(R.events.length).fill(null), pending={};
+  const isQ=new Set(R.structs.filter(s=>QUEUE_NAME.test(baseName(s.name))).map(s=>s.sid));
+  let c=null;
+  R.events.forEach((e,i)=>{
+    if(e.type==='write' && e.shift!==undefined && isQ.has(e.sid) && e.path.length===0 && Number.isInteger((e.gone||[])[0])) c=e.gone[0];
+    if(e.type==='write' && isQ.has(e.sid) && S[e.sid] && S[e.sid].t==='a' && e.path.length===1 && e.shift===undefined){
+      // A poll/pop at the front shows up as "shift everything left, then delete the last cell"; a push-front
+      // looks the same until the final append. So remember the old head and only commit it when the cell is deleted.
+      const arr=S[e.sid].v, k=e.path[0];
+      if(e.del){
+        if(pending[e.sid]!==undefined){ c=pending[e.sid]; pending[e.sid]=undefined; }
+        else if(Number.isInteger(arr[k])) c=arr[k];
+      } else if(k>=arr.length) pending[e.sid]=undefined;
+      else if(k===0 && arr.length>1 && Number.isInteger(arr[0]) && arr[0]!==e.val && pending[e.sid]===undefined) pending[e.sid]=arr[0];
+    }
+    if(e.type==='init') S[e.sid]=cloneSnap(e.snap); else if(e.type==='write'&&S[e.sid]) applyWrite(S[e.sid],e); else if(e.type==='graph') S[e.sid]=e.snap;
+    cur[i]=c;
+  });
+  return cur;
+}
+function graphDraw(S,upto,ev,stack){
+  let info=null,G=null;
+  for(const kindWanted of ['adj','edges']){
+    for(const s of R.structs){ const g=asGraph(s.name,S[s.sid]); if(g && g.kind===kindWanted){ info=s; G=g; break; } }
+    if(G) break;
+  }
+  if(!G) return '';
+  const byName=(re)=>R.structs.find(s=>re.test(baseName(s.name)) && S[s.sid]);
+  const ctx={vis:new Set(),q:new Set(),dist:new Map(),cur:null,hl:new Set()};
+  const vs=byName(VISITED_NAME);
+  if(vs){ const v=S[vs.sid]; if(v.t==='a') v.v.forEach((x,i)=>{ if(x===true) ctx.vis.add(i); }); else if(v.t==='s') v.v.forEach(x=>{ if(Number.isInteger(x)) ctx.vis.add(x); }); }
+  const ds=R.structs.find(s=>DIST_NAME.test(baseName(s.name)) && S[s.sid] && S[s.sid].t==='a' && S[s.sid].v.length>=G.n-1 && S[s.sid].v.every(x=>typeof x==='number'||x===undefined));
+  if(ds) S[ds.sid].v.forEach((x,i)=>{ if(typeof x==='number' && x>=0 && x!==Infinity){ ctx.dist.set(i,x); ctx.vis.add(i); } });
+  const qs=byName(QUEUE_NAME);
+  if(qs && S[qs.sid].t==='a') S[qs.sid].v.forEach(x=>{ if(Number.isInteger(x)) ctx.q.add(x); });
+  if(!R.gcur) R.gcur=computeCur();
+  ctx.cur = upto>=0 ? R.gcur[upto] : null;
+  if(ctx.cur===null && stack.length){ const m=/\(\s*(-?\d+)/.exec(R.nodes[stack[stack.length-1]].label); if(m) ctx.cur=Number(m[1]); }
+  if(ev && ev.type==='write' && ev.path.length && Number.isInteger(ev.path[0]) && ((vs&&vs.sid===ev.sid)||(ds&&ds.sid===ev.sid))) ctx.hl.add(ev.path[0]);
+  return renderGraphDraw(info,G,ctx);
+}
+function renderGraphDraw(info,G,ctx){
+  const n=G.n, W=Math.min(440,Math.max(260,n*36)), cx=W/2, cy=W/2, Rr=W/2-38, r0=15;
+  const P=i=>{ const a=-Math.PI/2+2*Math.PI*i/n; return [cx+Rr*Math.cos(a), cy+Rr*Math.sin(a)]; };
+  const mid='gm'+info.sid;
+  let svg=`<svg width="${W}" height="${W}" viewBox="0 0 ${W} ${W}"><defs><marker id="${mid}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="currentColor"/></marker></defs>`;
+  const seen=new Set();
+  G.edges.forEach(([u,v])=>{
+    if(u===v) return;
+    const key=G.directed ? u+','+v : Math.min(u,v)+','+Math.max(u,v);
+    if(seen.has(key)) return; seen.add(key);
+    const [x1,y1]=P(u), [x2,y2]=P(v), dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy)||1, ux=dx/len, uy=dy/len;
+    if(!G.directed){ svg+=`<line class="ge" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`; return; }
+    const off=10, qx=(x1+x2)/2-uy*off*2, qy=(y1+y2)/2+ux*off*2;
+    svg+=`<path class="ge" marker-end="url(#${mid})" d="M${x1+ux*r0},${y1+uy*r0} Q${qx},${qy} ${x2-ux*(r0+3)},${y2-uy*(r0+3)}"/>`;
+  });
+  for(let i=0;i<n;i++){
+    const [x,y]=P(i), cls=(ctx.cur===i?' cu':'')+(ctx.q.has(i)?' qd':'')+(ctx.vis.has(i)?' vis':'')+(ctx.hl.has(i)?' hl':'');
+    svg+=`<g class="gv${cls}"><circle cx="${x}" cy="${y}" r="${r0}"/><text x="${x}" y="${y+4}">${i}</text>`;
+    if(ctx.dist.has(i)) svg+=`<text class="gd" x="${x}" y="${y+r0+12}">d=${ctx.dist.get(i)}</text>`;
+    svg+='</g>';
+  }
+  svg+='</svg>';
+  const leg=`<div class="gleg"><span><i style="background:var(--active);border-color:var(--active)"></i>current</span><span><i style="border-color:var(--wait)"></i>in queue / stack</span><span><i style="background:color-mix(in srgb,var(--done) 30%,var(--card));border-color:var(--done)"></i>visited</span></div>`;
+  return `<div class="gwrap"><div class="nm">${esc(info.name)} <span>(graph · ${G.n} nodes${G.directed?', directed':''})</span></div>${svg}${leg}</div>`;
+}
+
+/* ---- activity log: one line per visible step (add / update / remove / call / return ...) ---- */
+// queue slide: writing q[k] with what is currently in q[k+1] means the front was polled and items shifted forward
+function isSlide(sid,root,path,val){
+  if(!root||root.t!=='a'||path.length!==1||!QUEUE_NAME.test(baseName(R.structs[sid].name))) return false;
+  const k=path[0]; return k+1<root.v.length && compact(root.v[k+1])===compact(val);
+}
+function existsAt(root,path){
+  let c=root;
+  for(let i=0;i<path.length;i++){
+    const k=path[i]; if(!c || typeof c!=='object') return false;
+    if(c.t==='a'){ if(!(k<c.v.length) || c.v[k]===undefined) return false; c=c.v[k]; }
+    else if(c.t==='m'){ if(!c.v.has(k)) return false; c=c.v.get(k); }
+    else if(c.t==='s') return c.v.has(k);
+    else { if(!(k in c.v)) return false; c=c.v[k]; }
+  }
+  return true;
+}
+function valueAt(root,path){ let c=root; for(const k of path){ if(!c||typeof c!=='object') return undefined; c=getChild(c,k); } return c; }
+function buildLog(){
+  const S=R.structs.map(()=>null), out=new Array(R.events.length).fill(null);
+  const row=(k,cls,html)=>({k,cls,html});
+  R.events.forEach((e,i)=>{
+    if(e.type==='call'){ const n=R.nodes[e.id]; out[i]=row('CALL','call',`<b>${esc(n.label)}</b>`); }
+    else if(e.type==='ret'){ const n=R.nodes[e.id]; out[i]=row(e.kind==='hit'?'MEMO HIT':'RETURN',e.kind==='hit'?'hit':'ret',`<b>${esc(n.label)}</b> → ${esc(e.val)}`); }
+    else if(e.type==='init'){ out[i]=row('RESET','reset',`<b>${esc(R.structs[e.sid].name)}</b> replaced: ${esc(shorten(compact(e.snap),60))}`); }
+    else if(e.type==='graph'){
+      const g=e.snap, lab=id=>{ const r=g.rows.find(x=>x[0]===id); return r?'('+esc(prim(r[1]))+')':'?'; };
+      if(e.ptrOnly) out[i]=row('POINTER','ptr',`<b>${esc(R.structs[e.sid].name)}</b>: `+(Object.entries(g.ptrs).map(([k,v])=>`${esc(k)} → ${v==null?'null':lab(v)}`).join(', ')||'none'));
+      else out[i]=row(g.kind==='list'?'RELINK':'UPDATE','link',esc(e.msg||'structure changed'));
+    }
+    else if(e.type==='write' && S[e.sid]){
+      const nm=R.structs[e.sid].name;
+      if(e.shift!==undefined) out[i]=row('POLL','del',`<b>${esc(nm)}</b> front removed: <b>${esc((e.gone||[]).map(g=>shorten(compact(g),14)).join(', '))}</b> <small>(rest slide forward)</small>`);
+      else if(e.len!==undefined) out[i]=row('REMOVE','del',`<b>${esc(nameOf(e.sid,e.path))}</b> cut to length ${e.len}`);
+      else {
+        const cell=nameOf(e.sid,e.path);
+        const reads=(e.reads||[]).filter(r=>!(r.sid===e.sid&&pk(r.path)===pk(e.path)));
+        const from = reads.length ? ` <small>← ${reads.slice(0,4).map(r=>esc(nameOf(r.sid,r.path))+'='+esc(prim(r.val))).join(', ')}</small>` : '';
+        if(e.del) out[i]=row('REMOVE','del',`<b>${esc(cell)}</b> removed <small>(was ${esc(shorten(compact(valueAt(S[e.sid],e.path)),30))})</small>`);
+        else if(!existsAt(S[e.sid],e.path)) out[i]=row('ADD','add',`<b>${esc(cell)}</b> = ${esc(shorten(compact(e.val),40))}${from}`);
+        else out[i]=row('UPDATE','set',`<b>${esc(cell)}</b>: ${esc(shorten(compact(valueAt(S[e.sid],e.path)),24))} → ${esc(shorten(compact(e.val),40))}${from}${isSlide(e.sid,S[e.sid],e.path,e.val)?' <small>(front polled — items slide forward)</small>':''}`);
+      }
+    }
+    if(e.type==='init') S[e.sid]=cloneSnap(e.snap); else if(e.type==='write'&&S[e.sid]) applyWrite(S[e.sid],e); else if(e.type==='graph') S[e.sid]=e.snap;
+  });
+  return out;
+}
+function renderLog(){
+  if(!R.alog) R.alog=buildLog();
+  const items=vis.slice(0,p).map(i=>({i,r:R.alog[i]})).filter(x=>x.r);
+  const box=$('alog');
+  if(!items.length){ box.innerHTML='<div class="empty">Nothing yet — press Step or Play.</div>'; return; }
+  const shownItems=items.slice(-120);
+  box.innerHTML=shownItems.map((x,k)=>`<div class="lg${k===shownItems.length-1?' now':''}"><span class="n">${vis.indexOf(x.i)+1}</span><span class="k ${x.r.cls}">${x.r.k}</span><span class="t">${x.r.html}</span></div>`).join('');
+  box.scrollTop=box.scrollHeight;
+}
+
+/* ---- main render ---- */
+const COL={hidden:'var(--hidden)',active:'var(--active)',wait:'var(--wait)',done:'var(--done)',hit:'var(--hit)'};
+function render(){
+  const upto = vis.length===0 ? -1 : (p===0 ? vis[0]-1 : vis[p-1]);
+  const ev = p===0 ? null : R.events[vis[p-1]];
+  const {st,stack,S} = stateAt(upto);
+
+  // tree
+  R.nodes.forEach(n=>{
+    const s=st[n.id].s;
+    n.g.style.opacity = s==='hidden' ? .2 : 1;
+    n.g.classList.toggle('hitn', s==='hit');
+    n.g.classList.toggle('just', !!ev && ev.type==='ret' && ev.id===n.id);
+    n.rect.style.stroke=COL[s];
+    n.rect.style.fill = s==='active' ? 'color-mix(in srgb,var(--active) 16%,var(--card))' : s==='done' ? 'color-mix(in srgb,var(--done) 13%,var(--card))' : s==='hit' ? 'color-mix(in srgb,var(--hit) 15%,var(--card))' : 'var(--card)';
+    n.rect.style.strokeDasharray = s==='hit' ? '5 3' : '';
+    n.vt.textContent = (s==='done'||s==='hit') ? (s==='hit'?'cached → ':'→ ')+n.valStr : '';
+    if(n.edge){ n.edge.style.stroke = s==='hidden' ? '' : 'var(--ink)'; n.edge.style.opacity = s==='hidden' ? .35 : .75; }
+  });
+  const focusId = stack.length ? stack[stack.length-1] : (ev && ev.type==='ret' ? ev.id : null);
+  if(focusId!==null && R.nodes[focusId]){
+    const n=R.nodes[focusId], b=$('treeBox');
+    if(n.x<b.scrollLeft+50 || n.x>b.scrollLeft+b.clientWidth-50) b.scrollTo({left:Math.max(0,n.x-b.clientWidth/2),behavior:'smooth'});
+    if(n.y<b.scrollTop+20 || n.y>b.scrollTop+b.clientHeight-60) b.scrollTo({top:Math.max(0,n.y-b.clientHeight/2),behavior:'smooth'});
+  }
+
+  // stack
+  const box=$('stack'); box.innerHTML='';
+  if(!stack.length && !(ev&&ev.type==='ret')) box.innerHTML='<div class="empty">(empty)</div>';
+  stack.forEach((id,i)=>{
+    const n=R.nodes[id], top = i===stack.length-1;
+    const kids = n.kids.filter(k=>st[k].s!=='hidden');
+    let kh = kids.slice(0,6).map(k=>{ const c=R.nodes[k], done=st[k].s==='done'||st[k].s==='hit';
+      return `<div class="kid">${esc(c.label)} ${done?'→ <em>'+esc(c.valStr)+'</em>':'<u>running…</u>'}</div>`; }).join('');
+    if(kids.length>6) kh += `<div class="kid">+${kids.length-6} more</div>`;
+    const f=document.createElement('div');
+    f.className='frame'+(top?' top':'')+(top&&ev&&ev.type==='call'?' new':'');
+    f.innerHTML=`<b>${esc(n.label)}</b>${top?'<span class="tp">◀ running</span>':''}${kh}`;
+    box.appendChild(f);
+  });
+  if(ev && ev.type==='ret'){
+    const n=R.nodes[ev.id], g=document.createElement('div');
+    g.className='frame ghost'+(ev.kind==='hit'?' hitg':'');
+    g.innerHTML=`<b>${esc(n.label)}</b> <span class="tp" style="color:var(--done)">popped</span><div class="kid">returns <em>${esc(ev.val)}</em> ↑ to caller</div>`;
+    box.appendChild(g);
+  }
+
+  // data structures
+  const H={}; // per sid highlight sets
+  const hs = sid => H[sid] || (H[sid]={w:new Set(),r:new Set()});
+  if(ev){
+    if(ev.type==='write' && !ev.len && ev.shift===undefined) hs(ev.sid).w.add(pk(ev.path));
+    if(ev.reads) ev.reads.forEach(r=>hs(r.sid).r.add(pk(r.path)));
+  }
+  const gl = R.structs.filter(s=>S[s.sid] && S[s.sid].t==='g');
+  const hlIds = ev && ev.type==='graph' ? new Set(ev.hl||[]) : new Set();
+  const gdr = graphDraw(S,upto,ev,stack);
+  $('graphCard').style.display = gl.length || gdr ? '' : 'none';
+  $('graphs').innerHTML = gl.map(s=>renderGraph(s,S[s.sid], ev && ev.type==='graph' && ev.sid===s.sid ? hlIds : new Set())).join('') + gdr;
+  const live = R.structs.filter(s=>S[s.sid] && S[s.sid].t!=='g' && R.shown.has(s.sid)).slice(-4);
+  $('structs').innerHTML = live.length ? live.map(s=>renderStruct(s,S[s.sid],H[s.sid]||{w:new Set(),r:new Set()})).join('')
+    : '<div class="empty">No arrays / objects / Maps were created by this code.</div>';
+  renderLog();
+  renderDebug(upto, ev);
+
+  // narration
+  $('say').innerHTML = narrate(ev, st, S);
+  $('bar').firstElementChild.style.width = (vis.length? p/vis.length*100 : 0)+'%';
+  $('prev').disabled = p===0; $('next').disabled = p>=vis.length;
+  $('out').innerHTML = (p>=vis.length && vis.length>0 ? (R.err ? '' : (R.hasResult ? 'Result: <b>'+esc(R.result)+'</b>\n' : '')) : '') + (R.logs.length && p>=vis.length ? 'console: '+esc(R.logs.join(' | ')) : '');
+}
+
+function narrate(ev,st,S){
+  if(!ev && !R.nodes.length){          // no recursion: describe what is actually on screen instead of assuming a DP table
+    const hasLinked = R.structs.some(x=>x.kind==='tree'||x.kind==='list');
+    const hasGraph = !!S && R.structs.some(x=>asGraph(x.name,S[x.sid]));
+    if(hasLinked || hasGraph){
+      const what = hasLinked && hasGraph ? 'tree / linked list and the graph' : hasGraph ? 'graph' : 'tree / linked list';
+      return `<span class="tag start">START</span>No recursion here, so there is no call tree. Press <b>Step</b> or <b>Play</b> and watch the <b>${what}</b> update` + (hasGraph ? ': the current node, the queue / stack and the visited nodes change one step at a time.' : ': the highlighted nodes and the pointer labels (like <code>cur</code> or <code>node</code>) show what each line does.');
+    }
+  }
+  if(!ev) return `<span class="tag start">START</span>${R.nodes.length ? 'Press <b>Step</b> or <b>Play</b>. Each time a function calls itself, a new frame is <b>pushed</b> on the call stack; when it finishes it is <b>popped</b> and hands its value back to the caller.' : 'No recursive calls here — this looks like <b>bottom-up DP / iteration</b>. Press <b>Step</b> and watch the table fill in on the right, one cell at a time.'}`;
+  if(ev.type==='call'){
+    const n=R.nodes[ev.id], par=n.parent!==null?R.nodes[n.parent]:null;
+    return `<span class="tag push">PUSH</span><code>${esc(n.label)}</code> is called` + (par ? ` by <code>${esc(par.label)}</code>. A new frame goes on top of the stack and <code>${esc(par.label)}</code> must wait until this call returns.` : `. This is the first frame on the stack.`);
+  }
+  if(ev.type==='ret'){
+    const n=R.nodes[ev.id], par=n.parent!==null?R.nodes[n.parent]:null;
+    let why;
+    if(ev.kind==='base') why = `<b>Base case</b> — nothing left to break down, so it returns <b>${esc(ev.val)}</b> immediately.`;
+    else if(ev.kind==='hit'){
+      const r=(ev.reads||[]).filter(x=>x.found)[0];
+      why = `<b>Memo hit!</b> ${r?`The answer was already stored (<code>${esc(nameOf(r.sid,r.path))} = ${esc(prim(r.val))}</code>)`:'The answer was already stored'}, so it returns <b>${esc(ev.val)}</b> without exploring its sub-tree again.`;
+    } else {
+      const vals=n.kids.map(k=>R.nodes[k].valStr);
+      why = vals.length ? `It received ${vals.map(v=>'<b>'+esc(v)+'</b>').join(', ')} from its ${vals.length===1?'child call':'child calls'} and returns <b>${esc(ev.val)}</b>.` : `It returns <b>${esc(ev.val)}</b>.`;
+    }
+    return `<span class="tag ${ev.kind==='hit'?'hit':ev.kind==='base'?'base':'pop'}">${ev.kind==='hit'?'MEMO HIT':'POP'}</span><code>${esc(n.label)}</code> ${why} Its frame is popped` + (par ? ` and the value goes back to <code>${esc(par.label)}</code>.` : `. <b>That was the outermost call — done.</b>`);
+  }
+  if(ev.type==='line'){
+    const src=(R.srcLines[ev.ln-1]||'').trim(), pos=R.linePos[vis[p-1]], pi=pos>0?R.events[R.lineIdx[pos-1]]:null;
+    let extra='';
+    if(pi && pi.fid===ev.fid){
+      const prev={}; pi.vars.forEach(v=>prev[v[0]]=v[2]);
+      const ch=ev.vars.filter(v=>prev[v[0]]!==v[2]).slice(0,4).map(v=>`<code>${esc(v[0])}</code> ${prev[v[0]]===undefined?'= ':'→ '}<b>${esc(v[2])}</b>`);
+      if(ch.length) extra+=` Since the previous line: ${ch.join(', ')}.`;
+    }
+    const lp=(ev.loops||[]).find(l=>l[0]===ev.ln);
+    if(lp) extra+= lp[1]<=1 ? ' The loop starts here.' : ` Back at the loop header after iteration <b>${lp[1]-1}</b> — it checks the condition again.`;
+    else if(ev.loops && ev.loops.length){ const q=ev.loops[ev.loops.length-1]; extra+=` (loop iteration <b>${q[1]}</b>)`; }
+    return `<span class="tag start">LINE ${ev.ln}</span><code>${esc(src)}</code> is about to run.${extra}`;
+  }
+  if(ev.type==='write' && ev.shift!==undefined){
+    const nm=R.structs[ev.sid].name, g=(ev.gone||[]).map(x=>'<b>'+esc(shorten(compact(x),20))+'</b>').join(', ');
+    return `<span class="tag pop">POLL</span>Take ${g} off the <b>front</b> of <code>${esc(nm)}</code>. Everything behind it moves forward one place — nothing is overwritten.`;
+  }
+  if(ev.type==='write'){
+    const cell=nameOf(ev.sid,ev.path);
+    if(ev.del) return `<span class="tag write">REMOVE</span><code>${esc(cell)}</code> is removed (undo / backtrack step).`;
+    const inputs=(ev.reads||[]).filter(r=>!(r.sid===ev.sid&&pk(r.path)===pk(ev.path)));
+    const how = inputs.length ? ` computed from ${inputs.map(r=>'<code>'+esc(nameOf(r.sid,r.path))+'</code> = <b>'+esc(prim(r.val))+'</b>').join(', ')}.` : '.';
+    const hasHits = R.nodes.some(n=>n.kind==='hit');
+    if(S && S[ev.sid] && isSlide(ev.sid,S[ev.sid],ev.path,ev.val)) return `<span class="tag write">UPDATE</span><code>${esc(cell)}</code> now holds <b>${esc(compact(ev.val))}</b>. The front item was just taken out with <code>poll()</code>, so every item behind it slides one place forward — nothing new was computed. The extra last cell is removed in the next step.`;
+    const mode = !R.nodes.length ? 'Fill the next cell of the table' : hasHits ? 'Save the answer so this sub-problem is never solved again' : 'Update';
+    return `<span class="tag write">${R.nodes.length&&!hasHits?'WRITE':'STORE'}</span>${mode}:<code>${esc(cell)} = ${esc(compact(ev.val))}</code>${how}`;
+  }
+  if(ev.type==='graph'){
+    const g=ev.snap, nm=R.structs[ev.sid].name, lab=id=>{ const r=g.rows.find(x=>x[0]===id); return r?'('+esc(prim(r[1]))+')':'?'; };
+    if(ev.ptrOnly){
+      const ps=Object.entries(g.ptrs).map(([k,v])=>`<code>${esc(k)}</code> → ${v==null?'<b>null</b>':'<b>'+lab(v)+'</b>'}`);
+      return `<span class="tag push">POINTER</span>Pointers into <code>${esc(nm)}</code> moved: ${ps.join(', ')||'none'}.`;
+    }
+    return `<span class="tag write">${g.kind==='list'?'RELINK':'UPDATE'}</span>${esc(ev.msg||'The structure changed.')}`;
+  }
+  return '';
+}
+
+/* ---- controls ---- */
+function go(d){ p=Math.min(vis.length,Math.max(0,p+d)); render(); if(p>=vis.length) pause(); }
+function play(){
+  if(p>=vis.length){ p=0; }
+  $('play').textContent='⏸ Pause';
+  const delay=()=>1400-$('speed').value*125;
+  const tick=()=>{ go(1); if(p<vis.length) timer=setTimeout(tick,delay()); };
+  timer=setTimeout(tick,0);
+}
+function pause(){ clearTimeout(timer); timer=null; $('play').textContent='▶ Play'; }
+$('play').onclick=()=>timer===null?play():pause();
+$('next').onclick=()=>{pause();go(1);};
+$('prev').onclick=()=>{pause();go(-1);};
+$('reset').onclick=()=>{pause();p=0;render();};
+addEventListener('keydown',e=>{
+  if(/^(TEXTAREA|INPUT|SELECT)$/.test(e.target.tagName)) return;
+  if(e.key==='ArrowRight'){pause();go(1);} else if(e.key==='ArrowLeft'){pause();go(-1);}
+  else if(e.key===' '){e.preventDefault();timer===null?play():pause();}
+});
+
+const emptyR=()=>({events:[],nodes:[],structs:[],logs:[],traced:[],err:null,result:'',hasResult:false});
+function rev(x){
+  if(x===null || typeof x!=='object') return x;
+  if(x.t==='a') return {t:'a',v:x.v.map(rev)};
+  if(x.t==='m') return {t:'m',v:new Map(x.v.map(([k,v])=>[k,rev(v)]))};
+  if(x.t==='s') return {t:'s',v:new Set(x.v)};
+  return x;
+}
+async function executeJava(code,entry){
+  if(!window.VIZ_TOKEN) return {fatal:'Java mode needs the helper program.\nOpen a terminal in the folder that contains this page and run:\n    java VizServer.java\nIt opens this page at http://localhost:8765 with Java enabled.'};
+  if(!entry.trim()) return {fatal:'Fill in the Run box, e.g.  new Solution().fib(5)'};
+  let resp,d;
+  try{ resp=await fetch('/trace',{method:'POST',headers:{'X-Viz-Token':window.VIZ_TOKEN},body:entry+'\n@@@CODE@@@\n'+code}); d=await resp.json(); }
+  catch(e){ return {fatal:'Could not reach the Java helper. Is "java VizServer.java" still running?'}; }
+  if(!d.ok) return {fatal:d.error};
+  d.events.forEach(e=>{ if(e.snap!==undefined) e.snap=rev(e.snap); if(e.type==='write' && !e.del) e.val=rev(e.val); if(e.gone) e.gone=e.gone.map(rev); });
+  return {events:d.events,nodes:d.nodes,structs:d.structs,logs:d.logs||[],traced:d.traced||[],err:null,result:d.result==null?'':d.result,hasResult:d.result!=null,warning:d.warning,linesTruncated:!!d.linesTruncated};
+}
+function computeVis(){
+  const dbg = R.hasLines && $('stepLines').checked;
+  vis = R.events.map((e,i)=>(e.silent || (e.type==='line' && !dbg))?-1:i).filter(i=>i>=0);
+}
+function setupDebug(){
+  R.hasLines = R.events.some(e=>e.type==='line');
+  $('stepLinesLbl').style.display = R.hasLines ? '' : 'none';
+  R.src = $('code').value; R.srcLines = R.src.split('\n');
+  R.lastLine = []; R.linePos = {}; R.lineIdx = [];
+  let cur=-1; R.events.forEach((e,i)=>{ if(e.type==='line'){ R.linePos[i]=R.lineIdx.length; R.lineIdx.push(i); cur=i; } R.lastLine[i]=cur; });
+  R.nextLine = []; let nx=-1; for(let i=R.events.length-1;i>=0;i--){ if(R.events[i].type==='line') nx=i; R.nextLine[i]=nx; }
+  R.codeEls = null;
+}
+$('stepLines').onchange=()=>{
+  if(!R) return; pause();
+  const cur = p ? vis[p-1] : -1;
+  computeVis(); p = vis.filter(i=>i<=cur).length; render();
+};
+function buildCodeView(){
+  const box=$('codeView');
+  box.innerHTML = R.srcLines.map((t,i)=>`<div class="cl"><span class="ln">${i+1}</span><span>${esc(t)||' '}</span></div>`).join('');
+  R.codeEls = [...box.children]; R.curLn = 0; R.loopLns = [];
+}
+const valEq=(a,b)=>a===b;
+function renderDebug(upto, ev){
+  const card=$('dbgCard');
+  if(!R.hasLines){ card.style.display='none'; return; }
+  card.style.display='';
+  if(!R.codeEls) buildCodeView();
+  let li = upto>=0 ? R.lastLine[upto] : -1;
+  if(ev && (ev.type==='write'||ev.type==='graph'||ev.type==='init') && li>=0){      // show the values *after* this change
+    const nl=R.nextLine[upto]; if(nl>=0 && R.events[nl].fid===R.events[li].fid) li=nl;
+  }
+  const le = li>=0 ? R.events[li] : null;
+  const isLine = !!ev && ev.type==='line';
+  const ln = ev && ev.ln ? ev.ln : (le ? le.ln : 0);
+  R.codeEls.forEach((el,i)=>{ el.className='cl'; });
+  (le && le.loops ? le.loops : []).forEach(([h])=>{ const end=loopEndOf(h); for(let k=h;k<=end && k<=R.codeEls.length;k++) R.codeEls[k-1].classList.add('inloop'); });
+  if(ln>0 && R.codeEls[ln-1]){ const el=R.codeEls[ln-1]; el.classList.remove('inloop'); el.classList.add(isLine||!ev?'now':'did');
+    const box=$('codeView'), top=el.offsetTop-box.offsetTop;
+    if(top<box.scrollTop+20 || top>box.scrollTop+box.clientHeight-50) box.scrollTop=Math.max(0,top-box.clientHeight/2); }
+  // variables
+  let html='';
+  if(!le){ html='<div class="empty">Press Step to start.</div>'; }
+  else {
+    const pi = R.linePos[li]>0 ? R.events[R.lineIdx[R.linePos[li]-1]] : null;
+    const prev = {}; if(pi && pi.fid===le.fid) pi.vars.forEach(v=>prev[v[0]]=v[2]);
+    const loops = (le.loops||[]).map(([h,it])=>`<span class="loopb">↻ <code>${esc((R.srcLines[h-1]||'').trim().replace(/\s*\{$/,'').slice(0,46))}</code> · ${h===ln&&isLine?(it<=1?'starting':'finished iteration '+(it-1)):'iteration <b>'+it+'</b>'}</span>`).join('');
+    const rows = le.vars.map(([n,t,v])=>{
+      const was = prev[n]; const cls = was===undefined && pi && pi.fid===le.fid ? 'new' : (was!==undefined && was!==v ? 'chg' : '');
+      return `<tr class="${cls}"><td class="n">${esc(n)}</td><td class="t">${esc(t)}</td><td class="v">${esc(v)}${cls==='chg'?` <small>(was ${esc(was)})</small>`:''}</td></tr>`;
+    }).join('');
+    html = `<div style="margin-bottom:6px;font-size:13px">in <b>${esc(le.m||'main')}()</b> · line <b>${le.ln}</b></div>${loops}`
+         + (rows ? `<table>${rows}</table>` : '<div class="empty">No variables in scope yet.</div>');
+  }
+  $('varsView').innerHTML = html;
+}
+function loopEndOf(h){   // last line of the loop that starts at line h (brace matching on the source)
+  R.loopEnd = R.loopEnd || {};
+  if(R.loopEnd[h]!==undefined) return R.loopEnd[h];
+  const L=R.srcLines; let depth=0, started=false, end=h;
+  for(let k=h;k<=L.length;k++){
+    const t=L[k-1].replace(/\/\/.*$/,'').replace(/"(?:[^"\\]|\\.)*"/g,'""');
+    for(const ch of t){ if(ch==='{'){depth++;started=true;} else if(ch==='}'){depth--;} }
+    end=k; if(started && depth<=0) break; if(!started && k>h && /;\s*$/.test(t)) break; if(!started && k===h && /;\s*$/.test(t) && !/^\s*(for|while)/.test(t)) break;
+  }
+  return R.loopEnd[h]=end;
+}
+async function animate(){
+  pause();
+  const msg=$('msg'); msg.className=''; msg.textContent='';
+  let fatal=null;
+  if($('lang').value==='java'){
+    msg.className='info'; msg.textContent='Compiling and tracing…';
+    const r=await executeJava($('code').value,$('entry').value);
+    msg.textContent='';
+    if(r.fatal){ fatal=r.fatal; R=emptyR(); } else R=r;
+  } else R = execute($('code').value, $('entry').value);
+  setupDebug(); computeVis();
+  // only show arrays/maps that actually change or get read (hides plain input arrays)
+  const firstInit=new Set(); R.shown=new Set();
+  R.events.forEach(e=>{
+    if(e.type==='init'){ if(firstInit.has(e.sid)) R.shown.add(e.sid); firstInit.add(e.sid); }
+    else if(e.type==='write') R.shown.add(e.sid);
+    else if(e.type==='graph') R.shown.add(e.sid);
+    if(e.reads) e.reads.forEach(r=>R.shown.add(r.sid));
+  });
+  if(!R.shown.size) R.structs.forEach(s=>R.shown.add(s.sid));
+  const nocalls = R.nodes.length===0;
+  $('viz').classList.toggle('nocalls', nocalls);
+  $('treeCard').style.display = nocalls ? 'none' : '';
+  $('stackCard').style.display = nocalls ? 'none' : '';
+  drawTree();
+  if(fatal){ msg.className=''; msg.textContent=fatal; }
+  else if(R.err){
+    if(R.err.message==='__LIMIT__') { msg.className='info'; msg.textContent=`Stopped early: more than ${MAXE} steps / ${MAXN} calls. Try a smaller input.`; }
+    else msg.textContent = (R.err.name||'Error')+': '+R.err.message + (R.err instanceof RangeError ? '\n(Infinite recursion? There may be a missing base case.)' : '');
+  } else if(!vis.length){
+    msg.className='info'; msg.textContent='Nothing to animate. Make sure the Run box calls your function, e.g. fib(5), and that it is recursive or fills an array / Map / object.';
+  } else {
+    msg.className='info';
+    msg.textContent = (R.traced.length ? 'Tracing recursive function(s): '+R.traced.join(', ')+'. ' : 'No recursion detected, showing array/Map changes. ') + vis.length+' steps.' + (R.warning ? '\n'+R.warning : '') + (R.linesTruncated ? '\nLine-by-line detail stopped after 15,000 lines; the key steps continue.' : '');
+  }
+  p=0; render();
+  if(!fatal && $('lang').value==='java') saveProblem($('code').value,$('entry').value);
+}
+$('animate').onclick=animate;
+$('code').addEventListener('keydown',e=>{
+  if(e.key==='Tab'){ e.preventDefault(); const t=e.target,s=t.selectionStart; t.value=t.value.slice(0,s)+'  '+t.value.slice(t.selectionEnd); t.selectionStart=t.selectionEnd=s+2; }
+});
+
+/* ---- examples ---- */
+const PRESETS=[
+ {name:'Fibonacci — plain recursion', entry:'fib(5)', code:
+`function fib(n) {
+  if (n < 2) return n;
+  return fib(n - 1) + fib(n - 2);
+}`},
+ {name:'Fibonacci — top-down DP (memo object)', entry:'fib(6)', code:
+`function fib(n, memo = {}) {
+  if (n in memo) return memo[n];
+  if (n < 2) return n;
+  memo[n] = fib(n - 1, memo) + fib(n - 2, memo);
+  return memo[n];
+}`},
+ {name:'Fibonacci — top-down DP (array memo, inner helper)', entry:'fib(6)', code:
+`function fib(n) {
+  const memo = new Array(n + 1).fill(-1);
+  function go(i) {
+    if (i < 2) return i;
+    if (memo[i] !== -1) return memo[i];
+    return memo[i] = go(i - 1) + go(i - 2);
+  }
+  return go(n);
+}`},
+ {name:'Fibonacci — bottom-up DP', entry:'fib(8)', code:
+`function fib(n) {
+  const dp = new Array(n + 1).fill(0);
+  dp[1] = 1;
+  for (let i = 2; i <= n; i++) {
+    dp[i] = dp[i - 1] + dp[i - 2];
+  }
+  return dp[n];
+}`},
+ {name:'Coin change — top-down DP', entry:'coinChange([1, 2, 5], 7)', code:
+`function coinChange(coins, amount) {
+  const memo = {};
+  function dfs(rem) {
+    if (rem === 0) return 0;
+    if (rem < 0) return Infinity;
+    if (rem in memo) return memo[rem];
+    let best = Infinity;
+    for (const c of coins) best = Math.min(best, 1 + dfs(rem - c));
+    memo[rem] = best;
+    return best;
+  }
+  const r = dfs(amount);
+  return r === Infinity ? -1 : r;
+}`},
+ {name:'0/1 Knapsack — top-down 2-D memo', entry:'knapsack([1, 1, 1], [10, 20, 30], 2)', code:
+`function knapsack(wt, val, W) {
+  const memo = Array.from({ length: wt.length + 1 }, () => Array(W + 1).fill(-1));
+  function go(i, w) {
+    if (i === wt.length || w === 0) return 0;
+    if (memo[i][w] !== -1) return memo[i][w];
+    let best = go(i + 1, w);
+    if (wt[i] <= w) best = Math.max(best, val[i] + go(i + 1, w - wt[i]));
+    return memo[i][w] = best;
+  }
+  return go(0, W);
+}`},
+ {name:'Longest common subsequence — bottom-up 2-D table', entry:'lcs("abcde", "ace")', code:
+`function lcs(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+      else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[m][n];
+}`},
+ {name:'Subsets — backtracking (take / skip)', entry:'subsets([1, 2, 3])', code:
+`function subsets(nums) {
+  const res = [];
+  function dfs(i, cur) {
+    if (i === nums.length) { res.push(cur.slice()); return; }
+    cur.push(nums[i]);  dfs(i + 1, cur);   // take
+    cur.pop();          dfs(i + 1, cur);   // skip
+  }
+  dfs(0, []);
+  return res;
+}`},
+ {name:'Factorial — linear recursion', entry:'factorial(5)', code:
+`function factorial(n) {
+  if (n <= 1) return 1;
+  return n * factorial(n - 1);
+}`},
+ {name:'Fast power — divide & conquer', entry:'power(2, 10)', code:
+`function power(x, n) {
+  if (n === 0) return 1;
+  const half = power(x, Math.floor(n / 2));
+  return n % 2 === 0 ? half * half : half * half * x;
+}`},
+ {name:'Tower of Hanoi', entry:'hanoi(3, "A", "C", "B")', code:
+`function hanoi(n, from, to, via) {
+  if (n === 0) return 0;
+  return hanoi(n - 1, from, via, to) + 1 + hanoi(n - 1, via, to, from);
+}`},
+ {name:'Mutual recursion — isEven / isOdd', entry:'isEven(4)', code:
+`function isEven(n) { return n === 0 ? true : isOdd(n - 1); }
+function isOdd(n)  { return n === 0 ? false : isEven(n - 1); }`},
+ {name:'Arrow-function style', entry:'sum(4)', code:
+`const sum = n =>
+  n === 0 ? 0 : n + sum(n - 1);`}
+];
+const JPRESETS=[
+ {name:'Fibonacci — top-down DP (int[] memo)', entry:'new Solution().fib(6)', code:
+`class Solution {
+    int[] memo;
+    int fib(int n) {
+        memo = new int[n + 1];
+        Arrays.fill(memo, -1);
+        return go(n);
+    }
+    int go(int i) {
+        if (i < 2) return i;
+        if (memo[i] != -1) return memo[i];
+        return memo[i] = go(i - 1) + go(i - 2);
+    }
+}`},
+ {name:'Fibonacci — bottom-up DP', entry:'new Solution().fib(8)', code:
+`class Solution {
+    int fib(int n) {
+        int[] dp = new int[n + 1];
+        dp[1] = 1;
+        for (int i = 2; i <= n; i++) {
+            dp[i] = dp[i - 1] + dp[i - 2];
+        }
+        return dp[n];
+    }
+}`},
+ {name:'Coin change — top-down DP (HashMap memo)', entry:'new Solution().coinChange(new int[]{1, 2, 5}, 7)', code:
+`class Solution {
+    Map<Integer, Integer> memo = new HashMap<>();
+    int coinChange(int[] coins, int amount) {
+        int r = dfs(coins, amount);
+        return r == Integer.MAX_VALUE ? -1 : r;
+    }
+    int dfs(int[] coins, int rem) {
+        if (rem == 0) return 0;
+        if (rem < 0) return Integer.MAX_VALUE;
+        if (memo.containsKey(rem)) return memo.get(rem);
+        int best = Integer.MAX_VALUE;
+        for (int c : coins) {
+            int sub = dfs(coins, rem - c);
+            if (sub != Integer.MAX_VALUE) best = Math.min(best, sub + 1);
+        }
+        memo.put(rem, best);
+        return best;
+    }
+}`},
+ {name:'0/1 Knapsack — top-down 2-D memo', entry:'new Solution().knapsack(new int[]{1, 1, 1}, new int[]{10, 20, 30}, 2)', code:
+`class Solution {
+    int[][] memo;
+    int knapsack(int[] wt, int[] val, int W) {
+        memo = new int[wt.length + 1][W + 1];
+        for (int[] row : memo) Arrays.fill(row, -1);
+        return go(wt, val, 0, W);
+    }
+    int go(int[] wt, int[] val, int i, int w) {
+        if (i == wt.length || w == 0) return 0;
+        if (memo[i][w] != -1) return memo[i][w];
+        int best = go(wt, val, i + 1, w);
+        if (wt[i] <= w) best = Math.max(best, val[i] + go(wt, val, i + 1, w - wt[i]));
+        return memo[i][w] = best;
+    }
+}`},
+ {name:'Longest common subsequence — bottom-up 2-D table', entry:'new Solution().lcs("abcde", "ace")', code:
+`class Solution {
+    int lcs(String a, String b) {
+        int m = a.length(), n = b.length();
+        int[][] dp = new int[m + 1][n + 1];
+        for (int i = 1; i <= m; i++) {
+            for (int j = 1; j <= n; j++) {
+                if (a.charAt(i - 1) == b.charAt(j - 1))
+                    dp[i][j] = dp[i - 1][j - 1] + 1;
+                else
+                    dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+        return dp[m][n];
+    }
+}`},
+ {name:'Subsets — backtracking (take / skip)', entry:'new Solution().subsets(new int[]{1, 2, 3})', code:
+`class Solution {
+    List<List<Integer>> res = new ArrayList<>();
+    List<List<Integer>> subsets(int[] nums) {
+        dfs(nums, 0, new ArrayList<>());
+        return res;
+    }
+    void dfs(int[] nums, int i, List<Integer> cur) {
+        if (i == nums.length) { res.add(new ArrayList<>(cur)); return; }
+        cur.add(nums[i]);
+        dfs(nums, i + 1, cur);      // take
+        cur.remove(cur.size() - 1);
+        dfs(nums, i + 1, cur);      // skip
+    }
+}`},
+ {name:'Tower of Hanoi', entry:"new Solution().hanoi(3, 'A', 'C', 'B')", code:
+`class Solution {
+    int hanoi(int n, char from, char to, char via) {
+        if (n == 0) return 0;
+        return hanoi(n - 1, from, via, to) + 1 + hanoi(n - 1, via, to, from);
+    }
+}`},
+ {name:'LeetCode 104 · Maximum depth of binary tree', entry:'new Solution().maxDepth(tree(3, 9, 20, null, null, 15, 7))', code:
+`class Solution {
+    public int maxDepth(TreeNode root) {
+        if (root == null) return 0;
+        return 1 + Math.max(maxDepth(root.left), maxDepth(root.right));
+    }
+}`},
+ {name:'LeetCode 226 · Invert binary tree', entry:'new Solution().invertTree(tree(4, 2, 7, 1, 3, 6, 9))', code:
+`class Solution {
+    public TreeNode invertTree(TreeNode root) {
+        if (root == null) return null;
+        TreeNode t = root.left;
+        root.left = root.right;
+        root.right = t;
+        invertTree(root.left);
+        invertTree(root.right);
+        return root;
+    }
+}`},
+ {name:'LeetCode 206 · Reverse linked list', entry:'new Solution().reverseList(list(1, 2, 3, 4))', code:
+`class Solution {
+    public ListNode reverseList(ListNode head) {
+        ListNode prev = null, cur = head;
+        while (cur != null) {
+            ListNode nxt = cur.next;
+            cur.next = prev;
+            prev = cur;
+            cur = nxt;
+        }
+        return prev;
+    }
+}`},
+ {name:'LeetCode 21 · Merge two sorted lists', entry:'new Solution().mergeTwoLists(list(1, 3, 5), list(2, 4))', code:
+`class Solution {
+    public ListNode mergeTwoLists(ListNode l1, ListNode l2) {
+        ListNode dummy = new ListNode(0), cur = dummy;
+        while (l1 != null && l2 != null) {
+            if (l1.val <= l2.val) { cur.next = l1; l1 = l1.next; }
+            else { cur.next = l2; l2 = l2.next; }
+            cur = cur.next;
+        }
+        cur.next = l1 != null ? l1 : l2;
+        return dummy.next;
+    }
+}`},
+ {name:'LeetCode 200 · Number of islands (grid DFS)', entry:"new Solution().numIslands(new char[][]{{'1','1','0','0'},{'0','1','0','1'},{'0','0','0','1'},{'1','0','0','0'}})", code:
+`class Solution {
+    public int numIslands(char[][] grid) {
+        int count = 0;
+        for (int i = 0; i < grid.length; i++)
+            for (int j = 0; j < grid[0].length; j++)
+                if (grid[i][j] == '1') { count++; sink(grid, i, j); }
+        return count;
+    }
+    void sink(char[][] g, int i, int j) {
+        if (i < 0 || j < 0 || i >= g.length || j >= g[0].length || g[i][j] != '1') return;
+        g[i][j] = '0';
+        sink(g, i + 1, j); sink(g, i - 1, j); sink(g, i, j + 1); sink(g, i, j - 1);
+    }
+}`},
+ {name:'LeetCode 155 · Min stack (class-based: end the Run box with ;)', entry:'MinStack m = new MinStack(); m.push(3); m.push(1); m.push(2); m.pop(); System.out.println(m.getMin());', code:
+`class MinStack {
+    Deque<Integer> st = new ArrayDeque<>(), mins = new ArrayDeque<>();
+    public void push(int x) { st.push(x); mins.push(mins.isEmpty() ? x : Math.min(x, mins.peek())); }
+    public void pop() { st.pop(); mins.pop(); }
+    public int getMin() { return mins.peek(); }
+}`},
+ {name:'Graph BFS · shortest distance from node 0 (adjacency list)', entry:'new Solution().bfs(6, new int[][]{{0,1},{0,2},{1,3},{2,3},{3,4},{4,5}})', code:
+`class Solution {
+    int bfs(int n, int[][] edges) {
+        List<List<Integer>> adj = new ArrayList<>();
+        for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
+        for (int[] e : edges) { adj.get(e[0]).add(e[1]); adj.get(e[1]).add(e[0]); }
+        int[] dist = new int[n];
+        Arrays.fill(dist, -1);
+        Queue<Integer> q = new LinkedList<>();
+        q.add(0);
+        dist[0] = 0;
+        while (!q.isEmpty()) {
+            int u = q.poll();
+            for (int v : adj.get(u)) {
+                if (dist[v] == -1) {
+                    dist[v] = dist[u] + 1;
+                    q.add(v);
+                }
+            }
+        }
+        return dist[n - 1];
+    }
+}`},
+ {name:'Graph DFS · count connected components (recursive)', entry:'new Solution().components(6, new int[][]{{0,1},{1,2},{3,4}})', code:
+`class Solution {
+    int components(int n, int[][] edges) {
+        List<List<Integer>> adj = new ArrayList<>();
+        for (int i = 0; i < n; i++) adj.add(new ArrayList<>());
+        for (int[] e : edges) { adj.get(e[0]).add(e[1]); adj.get(e[1]).add(e[0]); }
+        boolean[] seen = new boolean[n];
+        int count = 0;
+        for (int i = 0; i < n; i++) {
+            if (!seen[i]) { count++; dfs(i, adj, seen); }
+        }
+        return count;
+    }
+    void dfs(int u, List<List<Integer>> adj, boolean[] seen) {
+        seen[u] = true;
+        for (int v : adj.get(u)) if (!seen[v]) dfs(v, adj, seen);
+    }
+}`}
+];
+function loadPresets(){
+  const list = $('lang').value==='java' ? JPRESETS : PRESETS;
+  $('preset').innerHTML='';
+  list.forEach((x,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=x.name; $('preset').appendChild(o); });
+  if($('lang').value==='java' && MYP.length){
+    const g=document.createElement('optgroup'); g.label='My problems (saved)';
+    MYP.forEach(x=>{ const o=document.createElement('option'); o.value='my:'+x.key; o.textContent=x.name; g.appendChild(o); });
+    $('preset').appendChild(g);
+  }
+  $('entry').placeholder = $('lang').value==='java' ? 'e.g. new Solution().fib(5)' : 'e.g. fib(5)';
+}
+$('lang').onchange=()=>{ loadPresets(); $('preset').onchange(); };
+$('preset').onchange=()=>{
+  const v=$('preset').value;
+  if(v.startsWith('my:')){ const m=MYP.find(x=>'my:'+x.key===v); if(!m) return; $('code').value=m.code; $('entry').value=m.inputs[0]; syncMyControls(); animate(); return; }
+  syncMyControls();
+  const x=($('lang').value==='java'?JPRESETS:PRESETS)[v]; $('code').value=x.code; $('entry').value=x.entry; animate();
+};
+
+/* ---- saved problems: every Java run is stored by the helper as my_problems/<method>.json ---- */
+let MYP=[];
+const myAuth = () => ({'X-Viz-Token':window.VIZ_TOKEN});
+const curMy = () => MYP.find(x=>'my:'+x.key===$('preset').value);
+function syncMyControls(){
+  const m=curMy(), sel=$('inputs');
+  $('renameP').style.display=$('delP').style.display = m ? '' : 'none';
+  if(m && m.inputs.length>1){
+    sel.innerHTML=m.inputs.map((x,i)=>`<option value="${i}">${i===0?'latest: ':''}${esc(x.length>60?x.slice(0,59)+'…':x)}</option>`).join('');
+    const at=m.inputs.indexOf($('entry').value); sel.value=String(at<0?0:at); sel.style.display='';
+  } else sel.style.display='none';
+}
+async function loadMy(){
+  if(!window.VIZ_TOKEN) return;
+  try{ const r=await fetch('/problems',{headers:myAuth()}); const d=await r.json(); if(Array.isArray(d)) MYP=d; }catch(e){}
+  const v=$('preset').value; loadPresets(); if([...$('preset').options].some(o=>o.value===v)) $('preset').value=v; syncMyControls();
+}
+async function saveProblem(code,entry){
+  if(!window.VIZ_TOKEN || $('lang').value!=='java' || !entry.trim()) return;
+  if(JPRESETS.some(x=>x.code===code && x.entry===entry)) return;                       // built-in examples are not saved
+  const m=curMy(); if(m && m.code===code && m.inputs[0]===entry) return;                // nothing new
+  try{
+    const r=await fetch('/problems/save',{method:'POST',headers:myAuth(),body:entry+'\n@@@CODE@@@\n'+code}); const d=await r.json();
+    if(d.ok){ await loadMy(); $('preset').value='my:'+d.key; syncMyControls(); }
+  }catch(e){}
+}
+$('inputs').onchange=()=>{ const m=curMy(); if(!m) return; $('entry').value=m.inputs[Number($('inputs').value)]; animate(); };
+$('renameP').onclick=async()=>{
+  const m=curMy(); if(!m) return;
+  const nn=prompt('New name for this saved problem:',m.name); if(!nn || !nn.trim() || nn.trim()===m.name) return;
+  const d=await (await fetch('/problems/rename',{method:'POST',headers:myAuth(),body:m.key+'\n@@@NAME@@@\n'+nn.trim()})).json();
+  if(!d.ok){ alert(d.error); return; }
+  await loadMy(); $('preset').value='my:'+d.key; syncMyControls();
+};
+$('delP').onclick=async()=>{
+  const m=curMy(); if(!m || !confirm('Delete saved problem "'+m.name+'"?\nThis removes my_problems/'+m.key+'.json')) return;
+  await fetch('/problems/delete',{method:'POST',headers:myAuth(),body:m.key});
+  await loadMy(); $('preset').value='0'; $('preset').onchange();
+};
+// Java is the default whenever the helper server is running; opening the bare HTML file falls back to JavaScript.
+if(window.VIZ_TOKEN) $('lang').value='java';
+loadPresets();
+$('preset').onchange();
+loadMy();
+</script>
+</body>
+</html>

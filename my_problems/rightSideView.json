@@ -1,0 +1,7 @@
+{
+  "key": "rightSideView",
+  "name": "rightSideView",
+  "savedAt": 1793833932273,
+  "inputs": ["new Solution().rightSideView(tree(1,2,3,null,5,null,4))"],
+  "code": "class Solution {\n    public List<Integer> rightSideView(TreeNode root) {\n        List<Integer> result = new ArrayList<>();\n        if(root == null) return result;\n\n        Queue<TreeNode> q = new LinkedList<>();\n        q.add(root);\n\n        while(!q.isEmpty()){\n            int size = q.size();\n            for(int i=0; i<size; i++){\n                TreeNode curr = q.poll();\n                if(i == size-1){\n                    result.add(curr.val);\n                }\n\n                if(curr.left != null){\n                    q.add(curr.left);\n                }\n                if(curr.right != null){\n                    q.add(curr.right);\n                }\n            }\n        }\n\n        return result;\n    }\n}"
+}
