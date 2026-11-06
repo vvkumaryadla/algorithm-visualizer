@@ -207,6 +207,7 @@ public class VizServer {
         inputs.remove(entry); inputs.add(0, entry);
         while (inputs.size() > MAX_INPUTS) inputs.remove(inputs.size() - 1);
         m.put("key", key);
+        m.put("lang", "java");
         m.put("name", old != null && old.get("name") instanceof String nm ? nm : key);
         m.put("savedAt", System.currentTimeMillis());
         m.put("inputs", inputs);

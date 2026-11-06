@@ -1,0 +1,8 @@
+{
+  "key": "js_fibonacci_top_down_dp_array_memo_inner_helper",
+  "lang": "js",
+  "name": "Fibonacci — top-down DP (array memo, inner helper)",
+  "savedAt": 1793949873110,
+  "inputs": ["fib(6)"],
+  "code": "function fib(n) {\n  const memo = new Array(n + 1).fill(-1);\n  function go(i) {\n    if (i < 2) return i;\n    if (memo[i] !== -1) return memo[i];\n    return memo[i] = go(i - 1) + go(i - 2);\n  }\n  return go(n);\n}"
+}

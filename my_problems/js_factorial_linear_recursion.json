@@ -1,0 +1,8 @@
+{
+  "key": "js_factorial_linear_recursion",
+  "lang": "js",
+  "name": "Factorial — linear recursion",
+  "savedAt": 1793949867110,
+  "inputs": ["factorial(5)"],
+  "code": "function factorial(n) {\n  if (n <= 1) return 1;\n  return n * factorial(n - 1);\n}"
+}

@@ -1,0 +1,8 @@
+{
+  "key": "js_0_1_knapsack_top_down_2_d_memo",
+  "lang": "js",
+  "name": "0/1 Knapsack — top-down 2-D memo",
+  "savedAt": 1793949870110,
+  "inputs": ["knapsack([1, 1, 1], [10, 20, 30], 2)"],
+  "code": "function knapsack(wt, val, W) {\n  const memo = Array.from({ length: wt.length + 1 }, () => Array(W + 1).fill(-1));\n  function go(i, w) {\n    if (i === wt.length || w === 0) return 0;\n    if (memo[i][w] !== -1) return memo[i][w];\n    let best = go(i + 1, w);\n    if (wt[i] <= w) best = Math.max(best, val[i] + go(i + 1, w - wt[i]));\n    return memo[i][w] = best;\n  }\n  return go(0, W);\n}"
+}

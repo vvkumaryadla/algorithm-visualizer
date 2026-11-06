@@ -1,0 +1,8 @@
+{
+  "key": "js_coin_change_top_down_dp",
+  "lang": "js",
+  "name": "Coin change — top-down DP",
+  "savedAt": 1793949871110,
+  "inputs": ["coinChange([1, 2, 5], 7)"],
+  "code": "function coinChange(coins, amount) {\n  const memo = {};\n  function dfs(rem) {\n    if (rem === 0) return 0;\n    if (rem < 0) return Infinity;\n    if (rem in memo) return memo[rem];\n    let best = Infinity;\n    for (const c of coins) best = Math.min(best, 1 + dfs(rem - c));\n    memo[rem] = best;\n    return best;\n  }\n  const r = dfs(amount);\n  return r === Infinity ? -1 : r;\n}"
+}

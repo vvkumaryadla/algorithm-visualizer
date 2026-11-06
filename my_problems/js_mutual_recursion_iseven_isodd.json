@@ -1,0 +1,8 @@
+{
+  "key": "js_mutual_recursion_iseven_isodd",
+  "lang": "js",
+  "name": "Mutual recursion — isEven / isOdd",
+  "savedAt": 1793949864110,
+  "inputs": ["isEven(4)"],
+  "code": "function isEven(n) { return n === 0 ? true : isOdd(n - 1); }\nfunction isOdd(n)  { return n === 0 ? false : isEven(n - 1); }"
+}

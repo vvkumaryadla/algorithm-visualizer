@@ -1,0 +1,8 @@
+{
+  "key": "js_longest_common_subsequence_bottom_up_2_d_table",
+  "lang": "js",
+  "name": "Longest common subsequence — bottom-up 2-D table",
+  "savedAt": 1793949869110,
+  "inputs": ["lcs(\"abcde\", \"ace\")"],
+  "code": "function lcs(a, b) {\n  const m = a.length, n = b.length;\n  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));\n  for (let i = 1; i <= m; i++) {\n    for (let j = 1; j <= n; j++) {\n      if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;\n      else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);\n    }\n  }\n  return dp[m][n];\n}"
+}

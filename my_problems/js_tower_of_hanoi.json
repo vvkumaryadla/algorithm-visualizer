@@ -1,0 +1,8 @@
+{
+  "key": "js_tower_of_hanoi",
+  "lang": "js",
+  "name": "Tower of Hanoi",
+  "savedAt": 1793949865110,
+  "inputs": ["hanoi(3, \"A\", \"C\", \"B\")"],
+  "code": "function hanoi(n, from, to, via) {\n  if (n === 0) return 0;\n  return hanoi(n - 1, from, via, to) + 1 + hanoi(n - 1, via, to, from);\n}"
+}

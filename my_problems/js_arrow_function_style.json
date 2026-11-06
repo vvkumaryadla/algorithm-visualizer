@@ -1,0 +1,8 @@
+{
+  "key": "js_arrow_function_style",
+  "lang": "js",
+  "name": "Arrow-function style",
+  "savedAt": 1793949863110,
+  "inputs": ["sum(4)"],
+  "code": "const sum = n =>\n  n === 0 ? 0 : n + sum(n - 1);"
+}

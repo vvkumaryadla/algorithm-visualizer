@@ -1,0 +1,8 @@
+{
+  "key": "js_subsets_backtracking_take_skip",
+  "lang": "js",
+  "name": "Subsets — backtracking (take / skip)",
+  "savedAt": 1793949868110,
+  "inputs": ["subsets([1, 2, 3])"],
+  "code": "function subsets(nums) {\n  const res = [];\n  function dfs(i, cur) {\n    if (i === nums.length) { res.push(cur.slice()); return; }\n    cur.push(nums[i]);  dfs(i + 1, cur);   // take\n    cur.pop();          dfs(i + 1, cur);   // skip\n  }\n  dfs(0, []);\n  return res;\n}"
+}

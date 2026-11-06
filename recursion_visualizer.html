@@ -1168,111 +1168,6 @@ $('code').addEventListener('keydown',e=>{
 });
 
 /* ---- examples ---- */
-const PRESETS=[
- {name:'Fibonacci — plain recursion', entry:'fib(5)', code:
-`function fib(n) {
-  if (n < 2) return n;
-  return fib(n - 1) + fib(n - 2);
-}`},
- {name:'Fibonacci — top-down DP (memo object)', entry:'fib(6)', code:
-`function fib(n, memo = {}) {
-  if (n in memo) return memo[n];
-  if (n < 2) return n;
-  memo[n] = fib(n - 1, memo) + fib(n - 2, memo);
-  return memo[n];
-}`},
- {name:'Fibonacci — top-down DP (array memo, inner helper)', entry:'fib(6)', code:
-`function fib(n) {
-  const memo = new Array(n + 1).fill(-1);
-  function go(i) {
-    if (i < 2) return i;
-    if (memo[i] !== -1) return memo[i];
-    return memo[i] = go(i - 1) + go(i - 2);
-  }
-  return go(n);
-}`},
- {name:'Fibonacci — bottom-up DP', entry:'fib(8)', code:
-`function fib(n) {
-  const dp = new Array(n + 1).fill(0);
-  dp[1] = 1;
-  for (let i = 2; i <= n; i++) {
-    dp[i] = dp[i - 1] + dp[i - 2];
-  }
-  return dp[n];
-}`},
- {name:'Coin change — top-down DP', entry:'coinChange([1, 2, 5], 7)', code:
-`function coinChange(coins, amount) {
-  const memo = {};
-  function dfs(rem) {
-    if (rem === 0) return 0;
-    if (rem < 0) return Infinity;
-    if (rem in memo) return memo[rem];
-    let best = Infinity;
-    for (const c of coins) best = Math.min(best, 1 + dfs(rem - c));
-    memo[rem] = best;
-    return best;
-  }
-  const r = dfs(amount);
-  return r === Infinity ? -1 : r;
-}`},
- {name:'0/1 Knapsack — top-down 2-D memo', entry:'knapsack([1, 1, 1], [10, 20, 30], 2)', code:
-`function knapsack(wt, val, W) {
-  const memo = Array.from({ length: wt.length + 1 }, () => Array(W + 1).fill(-1));
-  function go(i, w) {
-    if (i === wt.length || w === 0) return 0;
-    if (memo[i][w] !== -1) return memo[i][w];
-    let best = go(i + 1, w);
-    if (wt[i] <= w) best = Math.max(best, val[i] + go(i + 1, w - wt[i]));
-    return memo[i][w] = best;
-  }
-  return go(0, W);
-}`},
- {name:'Longest common subsequence — bottom-up 2-D table', entry:'lcs("abcde", "ace")', code:
-`function lcs(a, b) {
-  const m = a.length, n = b.length;
-  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
-      else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-    }
-  }
-  return dp[m][n];
-}`},
- {name:'Subsets — backtracking (take / skip)', entry:'subsets([1, 2, 3])', code:
-`function subsets(nums) {
-  const res = [];
-  function dfs(i, cur) {
-    if (i === nums.length) { res.push(cur.slice()); return; }
-    cur.push(nums[i]);  dfs(i + 1, cur);   // take
-    cur.pop();          dfs(i + 1, cur);   // skip
-  }
-  dfs(0, []);
-  return res;
-}`},
- {name:'Factorial — linear recursion', entry:'factorial(5)', code:
-`function factorial(n) {
-  if (n <= 1) return 1;
-  return n * factorial(n - 1);
-}`},
- {name:'Fast power — divide & conquer', entry:'power(2, 10)', code:
-`function power(x, n) {
-  if (n === 0) return 1;
-  const half = power(x, Math.floor(n / 2));
-  return n % 2 === 0 ? half * half : half * half * x;
-}`},
- {name:'Tower of Hanoi', entry:'hanoi(3, "A", "C", "B")', code:
-`function hanoi(n, from, to, via) {
-  if (n === 0) return 0;
-  return hanoi(n - 1, from, via, to) + 1 + hanoi(n - 1, via, to, from);
-}`},
- {name:'Mutual recursion — isEven / isOdd', entry:'isEven(4)', code:
-`function isEven(n) { return n === 0 ? true : isOdd(n - 1); }
-function isOdd(n)  { return n === 0 ? false : isEven(n - 1); }`},
- {name:'Arrow-function style', entry:'sum(4)', code:
-`const sum = n =>
-  n === 0 ? 0 : n + sum(n - 1);`}
-];
 const JPRESETS=[
  {name:'Fibonacci — top-down DP (int[] memo)', entry:'new Solution().fib(6)', code:
 `class Solution {
@@ -1483,12 +1378,13 @@ const JPRESETS=[
 }`}
 ];
 function loadPresets(){
-  const list = $('lang').value==='java' ? JPRESETS : PRESETS;
+  const isJava = $('lang').value==='java', list = isJava ? JPRESETS : [];     // JavaScript examples now live in my_problems/js_*.json
   $('preset').innerHTML='';
   list.forEach((x,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=x.name; $('preset').appendChild(o); });
-  if($('lang').value==='java' && MYP.length){
-    const g=document.createElement('optgroup'); g.label='My problems (saved)';
-    MYP.forEach(x=>{ const o=document.createElement('option'); o.value='my:'+x.key; o.textContent=x.name; g.appendChild(o); });
+  const mine = MYP.filter(x=>(x.lang||'java')===(isJava?'java':'js'));
+  if(mine.length){
+    const g=document.createElement('optgroup'); g.label=isJava?'My problems (saved)':'JavaScript problems';
+    mine.forEach(x=>{ const o=document.createElement('option'); o.value='my:'+x.key; o.textContent=x.name; g.appendChild(o); });
     $('preset').appendChild(g);
   }
   $('entry').placeholder = $('lang').value==='java' ? 'e.g. new Solution().fib(5)' : 'e.g. fib(5)';
@@ -1498,7 +1394,7 @@ $('preset').onchange=()=>{
   const v=$('preset').value;
   if(v.startsWith('my:')){ const m=MYP.find(x=>'my:'+x.key===v); if(!m) return; $('code').value=m.code; $('entry').value=m.inputs[0]; syncMyControls(); animate(); return; }
   syncMyControls();
-  const x=($('lang').value==='java'?JPRESETS:PRESETS)[v]; $('code').value=x.code; $('entry').value=x.entry; animate();
+  const x=JPRESETS[v]; if(!x) return; $('code').value=x.code; $('entry').value=x.entry; animate();
 };
 
 /* ---- saved problems: every Java run is stored by the helper as my_problems/<method>.json ---- */
@@ -1538,7 +1434,7 @@ $('renameP').onclick=async()=>{
 $('delP').onclick=async()=>{
   const m=curMy(); if(!m || !confirm('Delete saved problem "'+m.name+'"?\nThis removes my_problems/'+m.key+'.json')) return;
   await fetch('/problems/delete',{method:'POST',headers:myAuth(),body:m.key});
-  await loadMy(); $('preset').value='0'; $('preset').onchange();
+  await loadMy(); $('preset').selectedIndex=0; $('preset').onchange();
 };
 // Java is the default whenever the helper server is running; opening the bare HTML file falls back to JavaScript.
 if(window.VIZ_TOKEN) $('lang').value='java';

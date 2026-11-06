@@ -1,0 +1,8 @@
+{
+  "key": "js_fibonacci_plain_recursion",
+  "lang": "js",
+  "name": "Fibonacci — plain recursion",
+  "savedAt": 1793949875110,
+  "inputs": ["fib(5)"],
+  "code": "function fib(n) {\n  if (n < 2) return n;\n  return fib(n - 1) + fib(n - 2);\n}"
+}
